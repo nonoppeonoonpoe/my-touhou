@@ -321,10 +321,37 @@ Game.prototype.handleKeyUp = function( e ) {
  * TODO: temporal
  */
 Game.prototype._runStep = function( ) {
+  // single play runs a fixed 60 steps per second, so high refresh rate
+  // monitors (120Hz, 144Hz...) don't speed the game up.
+  // online co-op is driven by sync messages and keeps one step per call.
+  if( this.isMultiPlay( ) ) {
+    this._runOneStep( ) ;
+    this._drawStep( ) ;
+  } else {
+    var stepMs = 1000 / Game._FPS ;
+    var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+    if( this.lastStepTime === undefined || nowTime - this.lastStepTime > 250 )
+      this.lastStepTime = nowTime - stepMs ;
+
+    var stepsDone = 0 ;
+    while( nowTime - this.lastStepTime >= stepMs && stepsDone < 5 ) {
+      this._runOneStep( ) ;
+      this.lastStepTime += stepMs ;
+      stepsDone++ ;
+    }
+    if( stepsDone >= 5 )
+      this.lastStepTime = nowTime ;
+    if( stepsDone > 0 )
+      this._drawStep( ) ;
+  }
+
+  if(this.states[this.state].doRunNextStep())
+    this.runNextStep();
+} ;
+
+
+Game.prototype._runOneStep = function( ) {
   this.states[ this.state ].runStep( ) ;
-  this.states[ this.state ].updateDisplay( this.surface ) ;
-  this._displayFps( this.surface ) ;
-  this._displayOnlineState(this.surface);
 
   if(this.someoneState >= 0 &&
      this.count > this.messageReceiveCount +
@@ -332,8 +359,13 @@ Game.prototype._runStep = function( ) {
     this.someoneState = -1;
 
   this.count++ ;
-  if(this.states[this.state].doRunNextStep())
-    this.runNextStep();
+} ;
+
+
+Game.prototype._drawStep = function( ) {
+  this.states[ this.state ].updateDisplay( this.surface ) ;
+  this._displayFps( this.surface ) ;
+  this._displayOnlineState(this.surface);
 } ;
 
 
