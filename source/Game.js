@@ -5,7 +5,7 @@ function Game(mainCanvas, bgCanvas) {
   this.surface = mainCanvas.getContext('2d');
   this.surface.fillStyle = 'white';
 
-  this.bgLayer = new Layer(bgCanvas);
+  this.bgLayer = Canvas2DLayer.pickLayer(bgCanvas);
 
 //  this.width = Number(mainCanvas.getAttribute('width')) - Game._SIDE_WIDTH;
   this.width = Number(mainCanvas.getAttribute('width'));
