@@ -52,6 +52,8 @@ var init = function( ) {
   __game = game ;
   window.onkeydown = function(event) { game.handleKeyDown(event); };
   window.onkeyup = function(event) { game.handleKeyUp(event); };
+  window.onblur = function() { game.handleBlur(); };
+  document.addEventListener('visibilitychange', function() { if(document.hidden) game.handleBlur(); });
   game.run( ) ;
 } ;
 

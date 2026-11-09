@@ -127,6 +127,8 @@ var __init = function( ) {
 
   window.onkeydown = function(event) { game.handleKeyDown(event); };
   window.onkeyup = function(event) { game.handleKeyUp(event); };
+  window.onblur = function() { game.handleBlur(); };
+  document.addEventListener('visibilitychange', function() { if(document.hidden) game.handleBlur(); });
 
   __game.run();
 } ;
