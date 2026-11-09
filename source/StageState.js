@@ -16,6 +16,11 @@ function StageState( game ) {
   this.spellCardManager     = null ;
   this.spellCard            = null ;
   this.backgroundManager    = null;
+  this.fx = new StageFx(this);
+
+  // debug cheats stay on across restarts, and stop the hiscore from saving
+  this.debugFlags = { 'lives': false, 'bombs': false, 'invincible': false, 'hitboxes': false };
+  this.cheated = false;
 
   this.params = __stageParams ; // TODO: temporal
   this.stageIndex = 0 ;
@@ -112,7 +117,9 @@ StageState.prototype._DEATH_POWER_LOSS = 16 ;
 StageState.prototype._SPELL_BASES = [ 20000, 20000, 25000, 30000, 40000, 50000 ] ;
 StageState.prototype._MESSAGE_SPAN = 120 ;
 StageState.prototype._HISCORE_KEY = 'jstouhou_hiscore' ;
-StageState.prototype._PAUSE_MENU = [ 'Resume', 'Restart', 'Quit to Title' ] ;
+StageState.prototype._BOMB_NAMES = [ 'Spirit Sign "Fantasy Seal"', 'Love Sign "Master Spark"' ] ;
+StageState.prototype._BANNER_SLIDE = 60 ;
+StageState.prototype._SPEEDS = [ 1, 0.5, 2 ] ;
 
 // power item values at full power, one step up per item
 StageState.prototype._POWER_CHAIN = [
@@ -279,6 +286,9 @@ StageState.prototype._resetEosdState = function( ) {
   this.messages = [ ] ;
   this.paused = false ;
   this.pauseIndex = 0 ;
+  this.pausePage = 'main' ;
+  this.bombName = null ;
+  this.fx.reset( ) ;
 } ;
 
 
@@ -295,7 +305,7 @@ StageState.prototype._loadHiScore = function( ) {
 
 // replays don't count for the hiscore
 StageState.prototype._saveHiScore = function( ) {
-  if( this.isFlagSet( this._FLAG_AUTO_PLAY ) || this.score <= this.hiScore )
+  if( this.isFlagSet( this._FLAG_AUTO_PLAY ) || this.cheated || this.score <= this.hiScore )
     return ;
   this.hiScore = this.score ;
   try {
@@ -318,7 +328,7 @@ StageState.prototype.getCollectLine = function( ) {
 
 
 StageState.prototype.canBeHit = function( fighter ) {
-  if( fighter.isFlagSet( fighter._FLAG_UNHITTABLE ) )
+  if( fighter.isFlagSet( fighter._FLAG_UNHITTABLE ) || this.debugFlags.invincible )
     return false ;
   if( this.oldRules )
     return true ;
@@ -438,6 +448,7 @@ StageState.prototype.runStep = function( ) {
   this.states[ this.state ].runStep( ) ;
   this.backgroundManager.runStep();
   this._runMessages( ) ;
+  this.fx.runStep( ) ;
 
   this.animationCount++ ;
 
@@ -538,6 +549,9 @@ StageState.prototype.updateDisplay = function( surface ) {
   this.game.bgLayer.clear();
   this._displayBG();
   this._displayElements( surface ) ;
+  this.fx.draw( surface ) ;
+  this._displayHitbox( surface ) ;
+  this._displayBombName( surface ) ;
   this._displayBossVital( surface ) ;
   this._displayStageTitle( surface ) ;
 
@@ -597,17 +611,9 @@ StageState.prototype._displayBossVital = function( surface ) {
     surface.fillText( ( timeLeft < 10 ? '0' : '' ) + timeLeft, fieldWidth - 8, 18 ) ;
   }
 
-  // TODO: temporal
   if( this.spellCard ) {
-    surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-    surface.globalAlpha = 0.4 ;
-    surface.fillRect( 50, 22, 380, 24 ) ;
-    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-    surface.textAlign = 'right' ;
-    surface.textBaseAlign = 'middle' ;
-    surface.font = '16px Arial' ;
-    surface.globalAlpha = 0.8 ;
-    surface.fillText( 'Spell Card: ' + this.spellCard, 420, 40 ) ;
+    surface.globalAlpha = 1.0 ;
+    this._displaySpellBanner( surface, boss ) ;
   }
 
   // marker under the field showing where the boss is
@@ -644,44 +650,8 @@ StageState.prototype._drawStar = function( surface, x, y, radius, color ) {
 } ;
 
 
-StageState.prototype._displayMessages = function( surface ) {
-  if( ! this.messages || this.messages.length == 0 )
-    return ;
-  surface.save( ) ;
-  surface.font = 'bold 18px Arial' ;
-  surface.textAlign = 'center' ;
-  for( var i = 0; i < this.messages.length; i++ ) {
-    var message = this.messages[ i ] ;
-    var fade = this._MESSAGE_SPAN - message.count ;
-    surface.globalAlpha = fade < 30 ? Math.max( 0, fade / 30 ) : 1.0 ;
-    surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-    surface.fillText( message.text, this.getWidth( ) / 2 + 1, 101 + i * 24 ) ;
-    surface.fillStyle = message.color ;
-    surface.fillText( message.text, this.getWidth( ) / 2, 100 + i * 24 ) ;
-  }
-  surface.restore( ) ;
-} ;
 
 
-StageState.prototype._displayPause = function( surface ) {
-  if( ! this.paused )
-    return ;
-  surface.save( ) ;
-  surface.globalAlpha = 0.6 ;
-  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.fillRect( 0, 0, this.getWidth( ), this.getHeight( ) ) ;
-  surface.globalAlpha = 1.0 ;
-  surface.textAlign = 'center' ;
-  surface.font = 'bold 24px Arial' ;
-  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillText( 'Paused', this.getWidth( ) / 2, 170 ) ;
-  surface.font = '18px Arial' ;
-  for( var i = 0; i < this._PAUSE_MENU.length; i++ ) {
-    surface.globalAlpha = ( i == this.pauseIndex ) ? 1.0 : 0.4 ;
-    surface.fillText( this._PAUSE_MENU[ i ], this.getWidth( ) / 2, 220 + i * 32 ) ;
-  }
-  surface.restore( ) ;
-} ;
 
 
 /**
@@ -1017,6 +987,7 @@ StageState.prototype.notifyFighterGotPowerItem = function( fighter, item ) {
     if( this.powerChain > this._POWER_CHAIN.length )
       this.powerChain = this._POWER_CHAIN.length ;
     this.score += this._POWER_CHAIN[ this.powerChain - 1 ] ;
+    this.fx.scorePopup( item.getX( ), item.getY( ), this._POWER_CHAIN[ this.powerChain - 1 ], this.powerChain >= this._POWER_CHAIN.length ) ;
   } else {
     this.score += 10 ;
     fighter.incrementPower( steps ) ;
@@ -1032,7 +1003,9 @@ StageState.prototype.notifyFighterGotScoreItem = function( fighter, item ) {
   }
 
   this.pointItems++ ;
-  this.score += this.getPointItemValue( item ) ;
+  var pointValue = this.getPointItemValue( item ) ;
+  this.score += pointValue ;
+  this.fx.scorePopup( item.getX( ), item.getY( ), pointValue, pointValue >= this._POINT_ITEM_MAX ) ;
 } ;
 
 
@@ -1131,6 +1104,7 @@ StageState.prototype.notifyEnemyDidShot = function( enemy, shot ) {
 
 StageState.prototype.notifyBulletHit = function( bullet, enemy ) {
   this.effectManager.createDamageEffect( enemy ) ;
+  this.fx.hitSpark( bullet.getX( ), bullet.getY( ) ) ;
   this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
   this.score += 10 ;
 } ;
@@ -1142,6 +1116,7 @@ StageState.prototype.notifyGraze = function(fighter, bullet) {
   bullet.graze -= 1; // TODO: should be in EnemyBullet?
   this.score += this.oldRules ? 100 : this._GRAZE_SCORE;
   this.effectManager.createGraze(fighter, bullet);
+  this.fx.grazeSpark(fighter.getX(), fighter.getY());
 };
 
 
@@ -1149,7 +1124,7 @@ StageState.prototype.notifyGraze = function(fighter, bullet) {
  * TODO: temporal
  */
 StageState.prototype.notifyFighterDoBomb = function( fighter ) {
-  if( this.bombs <= 0 )
+  if( this.bombs <= 0 && ! this.debugFlags.bombs )
     return ;
   if( this.isFlagSet( this._FLAG_BOMB ) )
     return ;
@@ -1160,8 +1135,11 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
     fighter.hitCount = -1 ;
   }
   this.spellFailed = true ;
-  this.bombs-- ;
+  if( ! this.debugFlags.bombs )
+    this.bombs-- ;
   this.bombCount = this.count ;
+  this.bombName = this._BOMB_NAMES[ fighter.characterIndex ] || this._BOMB_NAMES[ 0 ] ;
+  this.fx.flash( 0.8 ) ;
   this.setFlag( this._FLAG_BOMB ) ;
   this.enemyManager.bomb( fighter ) ;
   this.enemyBulletManager.bomb( fighter ) ;
@@ -1180,6 +1158,7 @@ StageState.prototype.notifyEnemyVanished = function( bullet, enemy ) {
   else if( enemy.scoreItem )
     this.itemManager.createScoreItem(enemy);
   this.effectManager.createExplosion(enemy);
+  this.fx.enemyBurst(enemy.getX(), enemy.getY(), false);
   this.notifyDoEffect( enemy, 'shockwave', null ) ;
   this.score += 100 ;
 } ;
@@ -1215,6 +1194,8 @@ StageState.prototype._endBossPhase = function( boss ) {
 
 StageState.prototype.notifyBossVanished = function( boss ) {
   this._endBossPhase( boss ) ;
+  this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
+  this.fx.flash( 0.6 ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
   this.spellCard = null ;
@@ -1319,6 +1300,8 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
   this.setFlag( this._FLAG_FIGHTER_DEAD ) ;
   this.setFlag( this._FLAG_SE_DEAD ) ;
   this.effectManager.createExplosion(fighter);
+  this.fx.playerDeath(fighter.getX(), fighter.getY());
+  this.fx.flash(0.4);
   this.notifyDoEffect(fighter, 'shockwave', null);
   fighter.setFlag( fighter._FLAG_UNHITTABLE ) ;
   fighter.deadCount = fighter.count ;
@@ -1326,7 +1309,7 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
   if( ! this.oldRules )
     this._dropPower( fighter ) ;
 
-  if( this.players <= 0 ) {
+  if( this.players <= 0 && ! this.debugFlags.lives ) {
     this._saveHiScore( ) ;
     this.sendMessageToServer(GameSocket._STATE_GAME_OVER);
     // TODO: temporal
@@ -1349,7 +1332,8 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
   }
 
   this.bombs = this.oldRules ? 2 : this._START_BOMBS ;
-  this.players-- ;
+  if( ! this.debugFlags.lives )
+    this.players-- ;
   fighter.state = fighter._STATE_ALIVE ;
   fighter.beDefaultPosition( ) ;
   fighter.deadCount = fighter.count ;
@@ -1400,6 +1384,7 @@ StageState.prototype.notifyBossBecameActive = function( boss ) {
     this.setFlag( this._FLAG_SE_POWER_EFFECT ) ;
     this.spellCard = boss.spellCard ;
     this.bossSpellCount = this.count ;
+    this.fx.flash( 0.35 ) ;
     this.setFlag( this._FLAG_BOSS_SPELLCARD ) ;
   }
   this.setFlag( this._FLAG_BOSS_EXIST ) ;
@@ -1427,6 +1412,7 @@ StageState.prototype.notifyBossBeginTalk = function( boss ) {
 
 StageState.prototype.notifyBossMovedNextStage = function( boss ) {
   this._endBossPhase( boss ) ;
+  this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
   this.clearFlag( this._FLAG_BOSS_SPELLCARD ) ; // Just in case.
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
   this.spellCard = null ;
@@ -1519,6 +1505,144 @@ StageState.prototype.isBombExist = function() {
 
 
 // esc or p pauses, returns true when the key was used by the pause menu
+
+
+StageState.prototype._displayMessages = function( surface ) {
+  if( ! this.messages || this.messages.length == 0 )
+    return ;
+  surface.save( ) ;
+  surface.textAlign = 'center' ;
+  surface.lineJoin = 'round' ;
+  for( var i = 0; i < this.messages.length; i++ ) {
+    var message = this.messages[ i ] ;
+    var fade = this._MESSAGE_SPAN - message.count ;
+    // pops in a bit big then settles
+    var popSize = message.count < 8 ? 26 - message.count : 18 ;
+    surface.font = 'italic bold ' + popSize + 'px Georgia, serif' ;
+    surface.globalAlpha = fade < 30 ? Math.max( 0, fade / 30 ) : 1.0 ;
+    surface.lineWidth = 4 ;
+    surface.strokeStyle = 'rgba( 0, 0, 0, 0.8 )' ;
+    surface.strokeText( message.text, this.getWidth( ) / 2, 100 + i * 26 ) ;
+    surface.fillStyle = message.color ;
+    surface.fillText( message.text, this.getWidth( ) / 2, 100 + i * 26 ) ;
+  }
+  surface.restore( ) ;
+} ;
+
+
+// the hitbox shows while focused: a white dot in a slowly spinning ring
+StageState.prototype._displayHitbox = function( surface ) {
+  if( this.viewFromFighter )
+    return ;
+  surface.save( ) ;
+  for( var i = 0; i < this.fighterManager.elements.length; i++ ) {
+    var hitFighter = this.fighterManager.elements[ i ] ;
+    if( hitFighter.isDead( ) )
+      continue ;
+    var showDot = hitFighter.isFlagSet( hitFighter._FLAG_SLOW ) || this.debugFlags.hitboxes ;
+    if( ! showDot )
+      continue ;
+    var x = hitFighter.getX( ) ;
+    var y = hitFighter.getY( ) ;
+    var spin = this.animationCount * 0.05 ;
+    surface.globalAlpha = 0.85 ;
+    for( var arc = 0; arc < 4; arc++ ) {
+      var arcStart = spin + arc * Math.PI / 2 ;
+      surface.beginPath( ) ;
+      surface.arc( x, y, 14, arcStart, arcStart + 1.0 ) ;
+      surface.strokeStyle = 'rgba( 40, 0, 30, 0.7 )' ;
+      surface.lineWidth = 3.5 ;
+      surface.stroke( ) ;
+      surface.strokeStyle = 'rgb( 255, 255, 255 )' ;
+      surface.lineWidth = 1.5 ;
+      surface.stroke( ) ;
+    }
+    surface.globalAlpha = 1.0 ;
+    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+    surface.beginPath( ) ;
+    surface.arc( x, y, hitFighter.hitRadius + 1, 0, Math.PI * 2 ) ;
+    surface.fill( ) ;
+    surface.strokeStyle = 'rgb( 220, 30, 60 )' ;
+    surface.lineWidth = 1 ;
+    surface.stroke( ) ;
+  }
+
+  // debug: every bullet's hit circle
+  if( this.debugFlags.hitboxes ) {
+    surface.strokeStyle = 'rgb( 80, 255, 80 )' ;
+    surface.lineWidth = 1 ;
+    surface.globalAlpha = 0.9 ;
+    var bullets = this.enemyBulletManager.elements ;
+    for( var j = 0; j < bullets.length; j++ ) {
+      if( bullets[ j ].isDead( ) || ! bullets[ j ].collisionWidth )
+        continue ;
+      surface.beginPath( ) ;
+      surface.arc( bullets[ j ].getX( ), bullets[ j ].getY( ),
+                   Math.min( bullets[ j ].collisionWidth, bullets[ j ].collisionHeight ) / 2, 0, Math.PI * 2 ) ;
+      surface.stroke( ) ;
+    }
+  }
+  surface.restore( ) ;
+} ;
+
+
+StageState.prototype._displayBombName = function( surface ) {
+  if( ! this.bombName || ! this.isFlagSet( this._FLAG_BOMB ) )
+    return ;
+  var bombAge = this.count - this.bombCount ;
+  var slide = Math.min( 1, bombAge / 15 ) ;
+  var fade = Math.min( 1, ( this._BOMB_SPAN - bombAge ) / 20 ) ;
+  surface.save( ) ;
+  surface.globalAlpha = Math.max( 0, fade ) ;
+  var bannerX = -260 + 270 * slide ;
+  surface.fillStyle = 'rgba( 0, 0, 0, 0.5 )' ;
+  surface.fillRect( bannerX - 10, this.getHeight( ) - 58, 280, 24 ) ;
+  surface.font = 'italic bold 15px Georgia, serif' ;
+  surface.textAlign = 'left' ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillText( this.bombName, bannerX, this.getHeight( ) - 41 ) ;
+  surface.restore( ) ;
+} ;
+
+
+// spell name slides up from the bottom to under the hp bar, with the bonus under it
+StageState.prototype._displaySpellBanner = function( surface, boss ) {
+  var spellAge = this.count - this.bossSpellCount ;
+  var slide = Math.min( 1, spellAge / this._BANNER_SLIDE ) ;
+  slide = 1 - ( 1 - slide ) * ( 1 - slide ) ;
+  var bannerY = ( this.getHeight( ) - 80 ) + ( 34 - ( this.getHeight( ) - 80 ) ) * slide ;
+  var rightX = this.getWidth( ) - 8 ;
+
+  surface.save( ) ;
+  surface.font = 'italic bold 15px Georgia, serif' ;
+  surface.textAlign = 'right' ;
+  var nameWidth = surface.measureText( this.spellCard ).width ;
+  var shade = surface.createLinearGradient( rightX - nameWidth - 40, 0, rightX, 0 ) ;
+  shade.addColorStop( 0, 'rgba( 0, 0, 0, 0 )' ) ;
+  shade.addColorStop( 0.3, 'rgba( 0, 0, 0, 0.55 )' ) ;
+  shade.addColorStop( 1, 'rgba( 0, 0, 0, 0.55 )' ) ;
+  surface.fillStyle = shade ;
+  surface.fillRect( rightX - nameWidth - 40, bannerY - 15, nameWidth + 48, 20 ) ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillText( this.spellCard, rightX, bannerY ) ;
+
+  if( ! this.oldRules && slide >= 1 ) {
+    surface.font = 'bold 11px Arial' ;
+    if( this.spellFailed ) {
+      surface.fillStyle = 'rgb( 200, 200, 200 )' ;
+      surface.fillText( 'Bonus Failed', rightX, bannerY + 16 ) ;
+    } else {
+      var spellBase = this._SPELL_BASES[ Math.min( this.stageIndex, this._SPELL_BASES.length - 1 ) ] ;
+      var bonusNow = spellBase * ( Math.max( 0, Math.floor( boss.getTimeLeft( ) ) ) + 10 ) ;
+      surface.fillStyle = 'rgb( 255, 230, 120 )' ;
+      surface.fillText( 'Bonus ' + bonusNow, rightX, bannerY + 16 ) ;
+    }
+  }
+  surface.restore( ) ;
+} ;
+
+
+// esc or p pauses, returns true when the key was used by the pause menu
 StageState.prototype._handlePauseKey = function( e ) {
   var isPauseKey = e.keyCode == 27 || e.keyCode == 80 ;
   if( ! this.paused ) {
@@ -1528,6 +1652,7 @@ StageState.prototype._handlePauseKey = function( e ) {
       return false ;
     this.paused = true ;
     this.pauseIndex = 0 ;
+    this.pausePage = 'main' ;
     this.game.pauseBGM( true ) ;
     this._soundEffect( Game._SE_SELECT ) ;
     return true ;
@@ -1535,36 +1660,173 @@ StageState.prototype._handlePauseKey = function( e ) {
 
   if( e.repeat && e.keyCode != 38 && e.keyCode != 40 )
     return true ;
+  var pauseItems = this._getPauseItems( ) ;
   switch( e.keyCode ) {
     case 38: // up
-      this.pauseIndex = ( this.pauseIndex + this._PAUSE_MENU.length - 1 ) % this._PAUSE_MENU.length ;
+      this.pauseIndex = ( this.pauseIndex + pauseItems.length - 1 ) % pauseItems.length ;
       this._soundEffect( Game._SE_SELECT ) ;
       break ;
     case 40: // down
-      this.pauseIndex = ( this.pauseIndex + 1 ) % this._PAUSE_MENU.length ;
+      this.pauseIndex = ( this.pauseIndex + 1 ) % pauseItems.length ;
       this._soundEffect( Game._SE_SELECT ) ;
       break ;
     case 27: // esc
     case 80: // p
-    case 88: // x
       this._resume( ) ;
+      break ;
+    case 88: // x
+      if( this.pausePage == 'debug' ) {
+        this.pausePage = 'main' ;
+        this.pauseIndex = 0 ;
+      } else {
+        this._resume( ) ;
+      }
       break ;
     case 90: // z
       this._soundEffect( Game._SE_SELECT ) ;
-      if( this.pauseIndex == 0 ) {
-        this._resume( ) ;
-      } else if( this.pauseIndex == 1 ) {
-        this.paused = false ;
-        this._saveHiScore( ) ;
-        this.game._changeState( Game._STATE_IN_STAGE, this.startParams ) ;
-      } else {
-        this.paused = false ;
-        this._saveHiScore( ) ;
-        this.game.notifyQuitStage( ) ;
-      }
+      pauseItems[ this.pauseIndex ].act.call( this ) ;
       break ;
   }
   return true ;
+} ;
+
+
+StageState.prototype._getPauseItems = function( ) {
+  if( this.pausePage == 'debug' )
+    return this._getDebugItems( ) ;
+  var pauseItems = [
+    { 'label': 'Resume', 'act': function( ) { this._resume( ) ; } },
+    { 'label': 'Restart', 'act': function( ) { this._restart( ) ; } }
+  ] ;
+  if( this.game.debug ) {
+    pauseItems.push( { 'label': 'Debug', 'act': function( ) {
+      this.pausePage = 'debug' ;
+      this.pauseIndex = 0 ;
+    } } ) ;
+  }
+  pauseItems.push( { 'label': 'Quit to Title', 'act': function( ) {
+    this.paused = false ;
+    this.game.speed = 1 ;
+    this._saveHiScore( ) ;
+    this.game.notifyQuitStage( ) ;
+  } } ) ;
+  return pauseItems ;
+} ;
+
+
+StageState.prototype._getDebugItems = function( ) {
+  var self = this ;
+  var onOff = function( flagOn ) { return flagOn ? 'ON' : 'off' ; } ;
+  var toggle = function( key ) {
+    return function( ) {
+      self.debugFlags[ key ] = ! self.debugFlags[ key ] ;
+      if( self.debugFlags[ key ] )
+        self.cheated = true ;
+    } ;
+  } ;
+  var debugItems = [
+    { 'label': 'Infinite lives: ' + onOff( this.debugFlags.lives ), 'act': toggle( 'lives' ) },
+    { 'label': 'Infinite bombs: ' + onOff( this.debugFlags.bombs ), 'act': toggle( 'bombs' ) },
+    { 'label': 'Invincible: ' + onOff( this.debugFlags.invincible ), 'act': toggle( 'invincible' ) },
+    { 'label': 'Show hitboxes: ' + onOff( this.debugFlags.hitboxes ), 'act': toggle( 'hitboxes' ) },
+    { 'label': 'Speed: ' + ( this.game.speed || 1 ) + 'x', 'act': function( ) {
+      var speedIndex = self._SPEEDS.indexOf( self.game.speed || 1 ) ;
+      self.game.speed = self._SPEEDS[ ( speedIndex + 1 ) % self._SPEEDS.length ] ;
+      if( self.game.speed != 1 )
+        self.cheated = true ;
+    } },
+    { 'label': 'Max power', 'act': function( ) {
+      self.cheated = true ;
+      self.fighter.incrementPower( 128 ) ;
+    } }
+  ] ;
+
+  // skipping around would break a replay, so only in normal play
+  if( ! this.isFlagSet( this._FLAG_AUTO_PLAY ) ) {
+    for( var stageNum = 0; stageNum < this.params.length; stageNum++ ) {
+      debugItems.push( this._makeJumpItem( stageNum, 0, 'Go to Stage ' + ( stageNum + 1 ) ) ) ;
+      var bosses = this.bossManager.params[ stageNum ] ;
+      for( var bossNum = 0; bossNum < bosses.length; bossNum++ ) {
+        var bossLabel = bossNum < bosses.length - 1 ? ' mid-boss' : ' boss' ;
+        debugItems.push( this._makeJumpItem( stageNum, bossNum + 1, 'Go to Stage ' + ( stageNum + 1 ) + bossLabel ) ) ;
+      }
+    }
+  }
+  debugItems.push( { 'label': 'Back', 'act': function( ) {
+    self.pausePage = 'main' ;
+    self.pauseIndex = 0 ;
+  } } ) ;
+  return debugItems ;
+} ;
+
+
+StageState.prototype._makeJumpItem = function( stageNum, bossNum, label ) {
+  return { 'label': label, 'act': function( ) { this._debugJump( stageNum, bossNum ) ; } } ;
+} ;
+
+
+/*
+ * restarts the run, then moves it to a stage, and to right before
+ * one of its bosses when bossNum > 0 (1 is the first boss)
+ */
+StageState.prototype._debugJump = function( stageNum, bossNum ) {
+  this.cheated = true ;
+  this._restart( ) ;
+  for( var i = 0; i < stageNum; i++ ) {
+    this.stageIndex++ ;
+    this.enemyManager.goNextStage( ) ;
+    this.bossManager.goNextStage( ) ;
+    this.backgroundManager.goNextStage( ) ;
+  }
+  this.states[ this._STATE_TALK ].stageIndex = stageNum ;
+  if( bossNum <= 0 )
+    return ;
+
+  var bossParams = this.bossManager.params[ stageNum ][ bossNum - 1 ] ;
+  this.count = Math.max( 0, bossParams.count - 30 ) ;
+  this.bossManager.index = bossNum - 1 ;
+  var enemyList = this.enemyManager.params[ stageNum ] ;
+  var skipIndex = 0 ;
+  while( skipIndex < enemyList.length && enemyList[ skipIndex ].count < this.count )
+    skipIndex++ ;
+  this.enemyManager.index = skipIndex ;
+} ;
+
+
+StageState.prototype._restart = function( ) {
+  this.paused = false ;
+  this._saveHiScore( ) ;
+  this.game._changeState( Game._STATE_IN_STAGE, this.startParams ) ;
+} ;
+
+
+StageState.prototype._displayPause = function( surface ) {
+  if( ! this.paused )
+    return ;
+  var pauseItems = this._getPauseItems( ) ;
+  var isDebug = this.pausePage == 'debug' ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.6 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, this.getWidth( ), this.getHeight( ) ) ;
+  surface.globalAlpha = 1.0 ;
+  surface.textAlign = 'center' ;
+  surface.font = 'bold 24px Arial' ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillText( isDebug ? 'Debug' : 'Paused', this.getWidth( ) / 2, isDebug ? 50 : 170 ) ;
+  surface.font = isDebug ? '15px Arial' : '18px Arial' ;
+  var rowGap = isDebug ? 22 : 32 ;
+  var firstRow = isDebug ? 85 : 220 ;
+  for( var i = 0; i < pauseItems.length; i++ ) {
+    surface.globalAlpha = ( i == this.pauseIndex ) ? 1.0 : 0.4 ;
+    surface.fillText( pauseItems[ i ].label, this.getWidth( ) / 2, firstRow + i * rowGap ) ;
+  }
+  if( isDebug && this.cheated ) {
+    surface.globalAlpha = 0.7 ;
+    surface.font = '12px Arial' ;
+    surface.fillText( 'cheats used, the hiscore won\'t save this run', this.getWidth( ) / 2, this.getHeight( ) - 20 ) ;
+  }
+  surface.restore( ) ;
 } ;
 
 

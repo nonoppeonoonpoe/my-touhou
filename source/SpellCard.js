@@ -130,7 +130,6 @@ SpellCard.prototype.display = function(surface) {
   surface.save();
   surface.globalAlpha = 0.4;
   this.Element_display(surface);
-  this.displaySpellCardName(surface);
   surface.restore();
 //  surface.fillText( x + ':' + y, x, y ) ;
 };
