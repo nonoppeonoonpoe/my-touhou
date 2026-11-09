@@ -1,6 +1,8 @@
-# toho-like-js
+# JSTouhou
 
-This is a touhou style danmaku shooter game which runs on your chrome.
+Fork of [takahirox/toho-like-js](https://github.com/takahirox/toho-like-js).
+
+JSTouhou is a touhou style danmaku shooter game which runs on your chrome.
 
 ## Demo
 [Demo](http://takahirox.github.io/toho-like-js/index.html)

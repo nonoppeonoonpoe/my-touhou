@@ -79,7 +79,7 @@ StaffRollState.prototype._displayMessage = function( surface ) {
   messages.push( '' ) ;
   messages.push( '' ) ;
   messages.push( 'Presented by' ) ;
-  messages.push( 'Toho-like JS project' ) ;
+  messages.push( 'JSTouhou project' ) ;
   messages.push( '' ) ;
   messages.push( '' ) ;
   messages.push( '' ) ;

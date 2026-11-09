@@ -523,8 +523,7 @@ StageState.prototype._drawSide = function(surface) {
   surface.drawImage(this._getFaceImage(), this.getWidth() + 30, 330, 100, 100);
 
   surface.font = '16px Arial';
-  surface.fillText('Toho-like STG JS', this.getWidth( ) + 15, 70);
-  surface.fillText('for debug', this.getWidth( ) + 15, 210);
+  surface.fillText('JSTouhou', this.getWidth( ) + 15, 70);
 
   surface.textAlign = 'right';
   surface.fillText('Score:', this.getWidth() + 70,  100);
@@ -538,6 +537,14 @@ StageState.prototype._drawSide = function(surface) {
   surface.fillText('Bomb:', this.getWidth() + 70, 180);
   surface.fillText(this.bombs, this.getWidth() + 140, 180);
 
+  if(! this.game.debug) {
+    surface.restore();
+    return;
+  }
+
+  surface.textAlign = 'left';
+  surface.fillText('for debug', this.getWidth( ) + 15, 210);
+  surface.textAlign = 'right';
   surface.fillText(this.count, this.getWidth() + 80, 230);
   surface.fillText(this.bulletManager.getNum(), this.getWidth() + 80, 250);
   surface.fillText(this.enemyManager.getNum(), this.getWidth() + 80, 270);

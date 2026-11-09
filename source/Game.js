@@ -297,13 +297,32 @@ Game.prototype.clear = function( surface ) {
 } ;
 
 
+Game._DEBUG_WORD = 'DEBUG' ;
+
+
 Game.prototype.handleKeyDown = function( e ) {
+  this._checkDebugWord( e ) ;
+
   // TODO: temporal
   if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
     return;
 
   this.states[ this.state ].handleKeyDown( e ) ;
   e.preventDefault( ) ;
+} ;
+
+
+// typing DEBUG at any time turns the debug info on, typing it again turns it off
+Game.prototype._checkDebugWord = function( e ) {
+  if( e.keyCode < 65 || e.keyCode > 90 ) {
+    this.typedWord = '' ;
+    return ;
+  }
+  this.typedWord = ( ( this.typedWord || '' ) + String.fromCharCode( e.keyCode ) ).slice( -Game._DEBUG_WORD.length ) ;
+  if( this.typedWord == Game._DEBUG_WORD ) {
+    this.debug = ! this.debug ;
+    this.typedWord = '' ;
+  }
 } ;
 
 
@@ -352,6 +371,7 @@ Game.prototype._runStep = function( ) {
 
 Game.prototype._runOneStep = function( ) {
   this.states[ this.state ].runStep( ) ;
+  this._calculateFps( ) ;
 
   if(this.someoneState >= 0 &&
      this.count > this.messageReceiveCount +
@@ -386,8 +406,7 @@ Game.prototype._calculateFps = function( ) {
 
 
 Game.prototype._displayFps = function( surface ) {
-  this._calculateFps( ) ;
-  if( ! this.fps )
+  if( ! this.debug || ! this.fps )
     return ;
 
   surface.save( ) ;
@@ -402,7 +421,7 @@ Game.prototype._displayFps = function( surface ) {
  * TODO: temporal.
  */
 Game.prototype._displayOnlineState = function(surface) {
-  if(! this.gs.connected())
+  if(! this.debug || ! this.gs.connected())
     return;
 
   surface.save();

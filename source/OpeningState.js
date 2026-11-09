@@ -195,8 +195,20 @@ TitleState = function( opening ) {
   this.count = 0 ;
   this.state = 0 ;
   this.index = 0 ;
+  this.showControls = false ;
 }
 __inherit( TitleState, OpeningAbstractState ) ;
+
+TitleState._MENU = [ 'Start', 'Replay', 'Controls' ] ;
+
+TitleState._CONTROLS = [
+  [ 'Cursor key', 'move / character select' ],
+  [ 'Z', 'shot / ok' ],
+  [ 'X', 'bomb / cancel' ],
+  [ 'Shift', 'slow' ],
+  [ 'Space', 'character change (for debug)' ],
+  [ 'Y', 'viewpoint change' ]
+] ;
 
 TitleState._WIDTH = 1280 ;
 TitleState._HEIGHT = 960 ;
@@ -210,6 +222,7 @@ TitleState._STATE_DISPLAYED  = 0x1 ;
 TitleState.prototype.init = function( ) {
   this.count = 0 ;
   this.index = 0 ;
+  this.showControls = false ;
   this.state = TitleState._STATE_DISPLAYING ;
   this.soundBGM( Game._BGM_TITLE ) ;
 } ;
@@ -229,6 +242,43 @@ TitleState.prototype.updateDisplay = function( surface ) {
   this._displayImage( surface ) ;
   this._displayMessage( surface ) ;
   this._displayPressKey( surface ) ;
+  this._displayControls( surface ) ;
+} ;
+
+
+TitleState.prototype._displayControls = function( surface ) {
+  if( ! this.showControls )
+    return ;
+
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.85 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, width, height ) ;
+  surface.globalAlpha = 1.0 ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.textBaseline = 'middle' ;
+
+  surface.font = "28px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.fillText( 'Controls', width / 2, 110 ) ;
+  surface.fillRect( width / 2 - 160, 135, 320, 1 ) ;
+
+  surface.font = "20px 'Comic Sans MS'" ;
+  for( var i = 0; i < TitleState._CONTROLS.length; i++ ) {
+    var lineY = 180 + i * 38 ;
+    surface.textAlign = 'right' ;
+    surface.fillText( TitleState._CONTROLS[ i ][ 0 ], width / 2 - 30, lineY ) ;
+    surface.textAlign = 'left' ;
+    surface.fillText( TitleState._CONTROLS[ i ][ 1 ], width / 2 - 10, lineY ) ;
+  }
+
+  surface.font = "16px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.globalAlpha = 0.6 ;
+  surface.fillText( 'Press Z or X to go back', width / 2, height - 80 ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -278,7 +328,7 @@ TitleState.prototype._displayMessage = function( surface ) {
   else
     surface.globalAlpha = 1.0 ;
 
-  surface.fillText( 'Toho like STG JS', 120, 200 ) ;
+  surface.fillText( 'JSTouhou', 120, 200 ) ;
   surface.restore( ) ;
 } ;
 
@@ -293,44 +343,52 @@ TitleState.prototype._displayPressKey = function( surface ) {
   surface.textBaseAlign = 'middle' ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
 
-  if( this.index == 0 )
-    surface.globalAlpha = 1.0 ;
-  else
-    surface.globalAlpha = 0.2 ;
-  surface.fillText( 'Start', 120, 300 ) ;
-
-  if( this.index == 1 )
-    surface.globalAlpha = 1.0 ;
-  else
-    surface.globalAlpha = 0.2 ;
-  surface.fillText( 'Replay', 120, 340 ) ;
+  for( var i = 0; i < TitleState._MENU.length; i++ ) {
+    if( this.index == i )
+      surface.globalAlpha = 1.0 ;
+    else
+      surface.globalAlpha = 0.2 ;
+    surface.fillText( TitleState._MENU[ i ], 120, 300 + i * 40 ) ;
+  }
 
   surface.restore( ) ;
 } ;
 
 
 TitleState.prototype.handleKeyDown = function( e ) {
+  if( this.showControls ) {
+    if( e.keyCode == 90 || e.keyCode == 88 ) { // z, x
+      this.soundEffect( Game._SE_SELECT ) ;
+      this.showControls = false ;
+    }
+    return ;
+  }
+
   switch( e.keyCode ) {
     case 90: // z
       this.soundEffect( Game._SE_SELECT ) ;
       if( this.state == TitleState._STATE_DISPLAYED ) {
         if( this.index == 0 )
           this.opening.notifyTitleConclusion( ) ;
-        else
+        else if( this.index == 1 )
           this.opening.notifyReplaySelectBegin( ) ;
+        else
+          this.showControls = true ;
       } else {
         this.state = TitleState._STATE_DISPLAYED ;
         this.count = TitleState._GLOBALALPHA_SPAN * 2 ; // TODO: temporal
       }
       break ;
     case 38: // up
+      if( this.state == TitleState._STATE_DISPLAYED ) {
+        this.soundEffect( Game._SE_SELECT ) ;
+        this.index = ( this.index + TitleState._MENU.length - 1 ) % TitleState._MENU.length ;
+      }
+      break ;
     case 40: // down
       if( this.state == TitleState._STATE_DISPLAYED ) {
         this.soundEffect( Game._SE_SELECT ) ;
-        if( this.index == 0 )
-          this.index = 1 ;
-        else
-          this.index = 0 ;
+        this.index = ( this.index + 1 ) % TitleState._MENU.length ;
       }
       break ;
     case 32: // space
