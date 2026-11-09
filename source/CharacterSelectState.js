@@ -71,6 +71,46 @@ CharacterSelectState.prototype._displayMessage = function( surface ) {
 } ;
 
 
+// what each girl's shots and bomb do, shown under the portraits
+CharacterSelectState._MOVE_LINES = [
+  [ 'Hakurei Reimu',
+    'Shot: ofuda and homing amulets',
+    'Focus: persuasion needles',
+    'Bomb: Spirit Sign "Fantasy Seal"',
+    'Slower, but her amulets find the enemy' ],
+  [ 'Kirisame Marisa',
+    'Shot: stars and magic missiles',
+    'Focus: Illusion Laser',
+    'Bomb: Love Sign "Master Spark"',
+    'Faster, and pulls in items from further away' ]
+] ;
+
+
+CharacterSelectState.prototype._displayMoves = function( surface ) {
+  if( this.count < CharacterSelectState._APPEAR_SPAN )
+    return ;
+  var moveLines = CharacterSelectState._MOVE_LINES[ this.index ] ;
+  var boxWidth = 300 ;
+  var boxLeft = this.index == 0 ? this.getWidth( ) - boxWidth - 20 : 20 ;
+  var boxTop = this.getHeight( ) - 180 ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.7 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( boxLeft, boxTop, boxWidth, 130 ) ;
+  surface.globalAlpha = 1.0 ;
+  surface.textAlign = 'left' ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.font = 'bold 18px Arial' ;
+  surface.fillText( moveLines[ 0 ], boxLeft + 12, boxTop + 26 ) ;
+  surface.font = '14px Arial' ;
+  for( var i = 1; i < moveLines.length; i++ ) {
+    surface.fillStyle = i == moveLines.length - 1 ? 'rgb( 255, 220, 140 )' : 'rgb( 230, 230, 230 )' ;
+    surface.fillText( moveLines[ i ], boxLeft + 12, boxTop + 30 + i * 22 ) ;
+  }
+  surface.restore( ) ;
+} ;
+
+
 CharacterSelectState.prototype._displayCharacters = function( surface ) {
   surface.save( ) ;
   if( this.index == 0 ) {
@@ -85,6 +125,7 @@ CharacterSelectState.prototype._displayCharacters = function( surface ) {
     this._displayMarisa( surface ) ;
   }
   surface.restore( ) ;
+  this._displayMoves( surface ) ;
 } ;
 
 
