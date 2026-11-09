@@ -297,13 +297,32 @@ Game.prototype.clear = function( surface ) {
 } ;
 
 
+Game._DEBUG_WORD = 'DEBUG' ;
+
+
 Game.prototype.handleKeyDown = function( e ) {
+  this._checkDebugWord( e ) ;
+
   // TODO: temporal
   if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
     return;
 
   this.states[ this.state ].handleKeyDown( e ) ;
   e.preventDefault( ) ;
+} ;
+
+
+// typing DEBUG at any time turns the debug info on, typing it again turns it off
+Game.prototype._checkDebugWord = function( e ) {
+  if( e.keyCode < 65 || e.keyCode > 90 ) {
+    this.typedWord = '' ;
+    return ;
+  }
+  this.typedWord = ( ( this.typedWord || '' ) + String.fromCharCode( e.keyCode ) ).slice( -Game._DEBUG_WORD.length ) ;
+  if( this.typedWord == Game._DEBUG_WORD ) {
+    this.debug = ! this.debug ;
+    this.typedWord = '' ;
+  }
 } ;
 
 
@@ -321,10 +340,38 @@ Game.prototype.handleKeyUp = function( e ) {
  * TODO: temporal
  */
 Game.prototype._runStep = function( ) {
+  // single play runs a fixed 60 steps per second, so high refresh rate
+  // monitors (120Hz, 144Hz...) don't speed the game up.
+  // online co-op is driven by sync messages and keeps one step per call.
+  if( this.isMultiPlay( ) ) {
+    this._runOneStep( ) ;
+    this._drawStep( ) ;
+  } else {
+    var stepMs = 1000 / Game._FPS ;
+    var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+    if( this.lastStepTime === undefined || nowTime - this.lastStepTime > 250 )
+      this.lastStepTime = nowTime - stepMs ;
+
+    var stepsDone = 0 ;
+    while( nowTime - this.lastStepTime >= stepMs && stepsDone < 5 ) {
+      this._runOneStep( ) ;
+      this.lastStepTime += stepMs ;
+      stepsDone++ ;
+    }
+    if( stepsDone >= 5 )
+      this.lastStepTime = nowTime ;
+    if( stepsDone > 0 )
+      this._drawStep( ) ;
+  }
+
+  if(this.states[this.state].doRunNextStep())
+    this.runNextStep();
+} ;
+
+
+Game.prototype._runOneStep = function( ) {
   this.states[ this.state ].runStep( ) ;
-  this.states[ this.state ].updateDisplay( this.surface ) ;
-  this._displayFps( this.surface ) ;
-  this._displayOnlineState(this.surface);
+  this._calculateFps( ) ;
 
   if(this.someoneState >= 0 &&
      this.count > this.messageReceiveCount +
@@ -332,8 +379,13 @@ Game.prototype._runStep = function( ) {
     this.someoneState = -1;
 
   this.count++ ;
-  if(this.states[this.state].doRunNextStep())
-    this.runNextStep();
+} ;
+
+
+Game.prototype._drawStep = function( ) {
+  this.states[ this.state ].updateDisplay( this.surface ) ;
+  this._displayFps( this.surface ) ;
+  this._displayOnlineState(this.surface);
 } ;
 
 
@@ -354,8 +406,7 @@ Game.prototype._calculateFps = function( ) {
 
 
 Game.prototype._displayFps = function( surface ) {
-  this._calculateFps( ) ;
-  if( ! this.fps )
+  if( ! this.debug || ! this.fps )
     return ;
 
   surface.save( ) ;
@@ -370,7 +421,7 @@ Game.prototype._displayFps = function( surface ) {
  * TODO: temporal.
  */
 Game.prototype._displayOnlineState = function(surface) {
-  if(! this.gs.connected())
+  if(! this.debug || ! this.gs.connected())
     return;
 
   surface.save();
