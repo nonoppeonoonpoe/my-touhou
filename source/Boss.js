@@ -31,10 +31,11 @@ BossManager.prototype._initFactory = function( ) {
  *       but not smart. To extend BossDrawer is smarter.
  */
 BossManager.prototype.initDrawer = function(layer, image) {
-  this.drawers = [];
-  this._generateDrawer(this.Boss._TYPE_RUMIA, layer);
-  this._generateDrawer(this.Boss._TYPE_DAIYOUSEI, layer);
-  this._generateDrawer(this.Boss._TYPE_CHIRNO, layer);
+  this.drawers = {};
+  for(var characterName in Game._CHARACTERS) {
+    if(Game._CHARACTERS[characterName].sheet !== null)
+      this._generateDrawer(characterName, layer);
+  }
 };
 
 
@@ -46,24 +47,8 @@ BossManager.prototype._generateDrawer = function(key, layer) {
 /**
  * TODO: consider who should manage image.
  */
-BossManager.prototype._getImage = function(type) {
-  var key;
-  switch(type) {
-    case this.Boss._TYPE_RUMIA:
-      key = Game._IMG_ENEMY_RUMIA;
-      break;
-    case this.Boss._TYPE_DAIYOUSEI:
-      key = Game._IMG_ENEMY_DAIYOUSEI;
-      break;
-    case this.Boss._TYPE_CHIRNO:
-      key = Game._IMG_ENEMY_CHILNO;
-      break;
-    // TODO: temporal
-    default:
-      key = Game._IMG_ENEMY_MOKOU;
-      break;
-  }
-  return this.gameState.getImage(key);
+BossManager.prototype._getImage = function(characterName) {
+  return this.gameState.getImage(Game._CHARACTERS[characterName].sheet);
 };
 
 
@@ -119,17 +104,7 @@ BossManager.prototype._generateBoss = function() {
 
 
 BossManager.prototype._str2type = function(str) {
-  switch(str) {
-    case 'rumia':
-      return this.Boss._TYPE_RUMIA;
-    case 'daiyousei':
-      return this.Boss._TYPE_DAIYOUSEI;
-    case 'chilno':
-      return this.Boss._TYPE_CHIRNO;
-    // TODO: temporal
-    default:
-      return null;
-  }
+  return Game._CHARACTERS[str] ? str : 'mokou';
 };
 
 
@@ -204,17 +179,10 @@ BossFactory.prototype._initFreelist = function() {
 
 
 BossFactory.prototype._getImage = function( params ) {
-  switch( params.character ) {
-    case 'rumia':
-      return this.gameState.getImage( Game._IMG_ENEMY_RUMIA ) ;
-    case 'chilno':
-      return this.gameState.getImage( Game._IMG_ENEMY_CHILNO ) ;
-    case 'daiyousei':
-      return this.gameState.getImage( Game._IMG_ENEMY_DAIYOUSEI ) ;
-    // TODO: temporal
-    default:
-      return this.gameState.getImage( Game._IMG_ENEMY_MOKOU ) ;
-  }
+  var character = Game._CHARACTERS[ params.character ] ;
+  if( ! character || character.sheet === null )
+    return this.gameState.getImage( Game._IMG_ENEMY_MOKOU ) ;
+  return this.gameState.getImage( character.sheet ) ;
 } ;
 
 
@@ -341,10 +309,6 @@ Boss.prototype._VANISH_COUNT = 100;
 // seconds each attack lasts, a phase can set its own with 'time'
 Boss.prototype._NORMAL_TIME = 40;
 Boss.prototype._SPELL_TIME = 45;
-
-Boss.prototype._TYPE_RUMIA     = 0;
-Boss.prototype._TYPE_DAIYOUSEI = 1;
-Boss.prototype._TYPE_CHIRNO    = 2;
 
 Boss.prototype._ESCAPE_VECTOR = {'r': 0, 'theta': 225, 'ra': 0.1};
 

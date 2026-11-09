@@ -1913,7 +1913,7 @@ StageState.prototype._displayPause = function( surface ) {
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.fillText( isDebug ? 'Debug' : 'Paused', this.getWidth( ) / 2, isDebug ? 50 : 170 ) ;
   surface.font = isDebug ? '15px Arial' : '18px Arial' ;
-  var rowGap = isDebug ? 22 : 32 ;
+  var rowGap = isDebug ? Math.min( 22, Math.floor( 360 / pauseItems.length ) ) : 32 ;
   var firstRow = isDebug ? 85 : 220 ;
   for( var i = 0; i < pauseItems.length; i++ ) {
     surface.globalAlpha = ( i == this.pauseIndex ) ? 1.0 : 0.4 ;
@@ -2390,6 +2390,10 @@ TalkState.prototype._displayStandUp = function( surface, params, w, dw ) {
     surface.globalAlpha = 0.5 ;
   }
   var p = this._getStandUp( params.character ) ;
+  if( ! p.image ) {
+    surface.restore( ) ;
+    return ;
+  }
   surface.drawImage( p.image,
                      w - p.width * 0.75 / 2,
                      50,
@@ -2400,40 +2404,10 @@ TalkState.prototype._displayStandUp = function( surface, params, w, dw ) {
 
 
 TalkState.prototype._getStandUp = function( key ) {
-  var image ;
-  var width ;
-  var height ;
-  switch( key ) {
-    case 'reimu':
-      image = this.stage.getImage( Game._IMG_STAND_REIMU ) ;
-      width = 400 ;
-      height = 600 ;
-      break ;
-    case 'marisa':
-      image = this.stage.getImage( Game._IMG_STAND_MARISA ) ;
-      width = 400 ;
-      height = 600 ;
-      break ;
-    case 'mokou':
-      image = this.stage.getImage( Game._IMG_STAND_MOKOU ) ;
-      width = 512 ;
-      height = 600 ;
-      break ;
-    case 'rumia':
-      image = this.stage.getImage( Game._IMG_STAND_RUMIA ) ;
-      width = 600 ;
-      height = 600 ;
-      break ;
-    case 'chilno':
-      image = this.stage.getImage( Game._IMG_STAND_CHILNO ) ;
-      width = 550 ;
-      height = 600 ;
-      break ;
-    default:
-      // TODO: throw exception?
-      break ;
-  }
-  return { 'image': image, 'width': width, 'height': height } ;
+  var character = Game._CHARACTERS[ key ] ;
+  if( ! character || character.stand === null )
+    return { 'image': undefined, 'width': undefined, 'height': undefined } ;
+  return { 'image': this.stage.getImage( character.stand ), 'width': character.standWidth, 'height': 600 } ;
 } ;
 
 

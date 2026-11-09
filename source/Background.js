@@ -8,7 +8,7 @@ function BackgroundManager(gameState) {
 };
 __inherit(BackgroundManager, ElementManager);
 
-BackgroundManager.prototype._MAX_NUM = 5;
+BackgroundManager.prototype._MAX_NUM = 10;
 
 
 BackgroundManager.prototype._initMaxNum = function() {
@@ -25,23 +25,21 @@ BackgroundManager.prototype._initFactory = function() {
 
 BackgroundManager.prototype._init = function() {
   this.elements.length = 0;
-  this.add(new Background(this.gameState,
-                          this.gameState.maxX,
-                          this.gameState.maxY));
-  this.add(new Background(this.gameState,
-                          this.gameState.maxX,
-                          this.gameState.maxY));
+  for(var i = 0; i < Game._STAGE_BGS.length; i++) {
+    this.add(new Background(this.gameState,
+                            this.gameState.maxX,
+                            this.gameState.maxY));
+  }
 };
 
 
 BackgroundManager.prototype.initDrawer = function(layer, image) {
   this.drawers.length = 0;
-  this.drawers.push(new BackgroundDrawer(
-                          this.get(0), layer,
-                          this.gameState.getImage(Game._IMG_BG1)));
-  this.drawers.push(new BackgroundDrawer(
-                          this.get(1), layer,
-                          this.gameState.getImage(Game._IMG_BG2)));
+  for(var i = 0; i < Game._STAGE_BGS.length; i++) {
+    this.drawers.push(new BackgroundDrawer(
+                            this.get(i), layer,
+                            this.gameState.getImage(Game._STAGE_BGS[i])));
+  }
 
   this.effectTextures.length = 0;
   this._initForwardBlackEffect(layer);
@@ -117,7 +115,8 @@ BackgroundManager.prototype.reset = function() {
 
 
 BackgroundManager.prototype.goNextStage = function() {
-  this.activeIndex++;
+  if(this.activeIndex < Game._STAGE_BGS.length - 1)
+    this.activeIndex++;
 };
 
 
