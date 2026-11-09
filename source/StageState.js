@@ -2680,20 +2680,21 @@ TalkState.prototype._displaySerif = function( surface ) {
   var speakerSide = line.left && line.left.active ? line.left : line.right ;
   var speaker = speakerSide ? speakerSide.character : null ;
 
-  // a name tab on the window, it slides over to the side that talks
+  // the speaker's name in her color, on the side that talks
   if( speaker ) {
     var tagName = TalkState._NAMES[ speaker ] || speaker ;
-    surface.font = 'bold 14px Arial' ;
-    var tagWidth = surface.measureText( tagName ).width + 20 ;
     var tagTime = __easeOut( __animTime( this.lineCount, 0, 10 ) ) ;
-    var tagLeft = speakerSide == line.left ? 50 : 430 - tagWidth ;
-    surface.globalAlpha = 0.9 * tagTime ;
-    surface.fillStyle = TalkState._NAME_COLORS[ speaker ] || 'rgb( 90, 90, 90 )' ;
-    surface.fillRect( tagLeft, 328 + 6 * ( 1 - tagTime ), tagWidth, 22 ) ;
+    var onLeft = speakerSide == line.left ;
+    surface.font = 'italic bold 17px Georgia, serif' ;
+    surface.textAlign = onLeft ? 'left' : 'right' ;
+    surface.lineJoin = 'round' ;
     surface.globalAlpha = tagTime ;
-    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-    surface.textAlign = 'left' ;
-    surface.fillText( tagName, tagLeft + 10, 344 + 6 * ( 1 - tagTime ) ) ;
+    var tagX = ( onLeft ? 56 : 424 ) + ( onLeft ? -10 : 10 ) * ( 1 - tagTime ) ;
+    surface.lineWidth = 4 ;
+    surface.strokeStyle = 'rgba( 0, 0, 0, 0.85 )' ;
+    surface.strokeText( tagName, tagX, 343 ) ;
+    surface.fillStyle = TalkState._NAME_COLORS[ speaker ] || 'rgb( 230, 230, 230 )' ;
+    surface.fillText( tagName, tagX, 343 ) ;
   }
 
   // the line types out letter by letter
@@ -2788,8 +2789,6 @@ ClearState.prototype.updateDisplay = function( surface ) {
   var pattern = surface.createPattern( this.getImage( Game._IMG_SCORE_BACK ), '' ) ;
   surface.fillStyle = pattern ;
   surface.fillRect( 0, base, width, height ) ;
-  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-  surface.fillRect( 0, base - 3, width, 3 ) ;
 
   var panelTime = __animTime( this.count, wipeSpan * 0.6, 16 ) ;
   if( panelTime <= 0 ) {
@@ -2811,9 +2810,6 @@ ClearState.prototype.updateDisplay = function( surface ) {
   surface.textAlign = 'center' ;
   surface.font = 'bold 26px Arial' ;
   surface.fillText( 'Stage ' + ( this.stage.stageIndex + 1 ) + ' Clear', 240, 110 - 16 * ( 1 - __easeBack( titleTime ) ) ) ;
-  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-  var lineWidth = 220 * __easeOut( __animTime( this.count, rowStart + 8, 20 ) ) ;
-  surface.fillRect( 240 - lineWidth / 2, 124, lineWidth, 2 ) ;
 
   var rows = [ ] ;
   if( ! this.stage.oldRules ) {

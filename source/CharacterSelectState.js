@@ -135,8 +135,6 @@ CharacterSelectState.prototype._displayMoves = function( surface ) {
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillRect( boxLeft, boxTop, boxWidth, 130 ) ;
   surface.globalAlpha = boxTime ;
-  surface.fillStyle = this.index == 0 ? 'rgb( 220, 50, 60 )' : 'rgb( 240, 200, 60 )' ;
-  surface.fillRect( boxLeft, boxTop, 4, 130 * boxTime ) ;
   surface.textAlign = 'left' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.font = 'bold 18px Arial' ;

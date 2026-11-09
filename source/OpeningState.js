@@ -630,10 +630,6 @@ TitleState.prototype._displayMessage = function( surface ) {
   surface.fillText( 'JSTouhou', 122, logoY + 2 ) ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillText( 'JSTouhou', 120, logoY ) ;
-
-  var lineTime = __easeOut( __animTime( this.count, TitleState._GLOBALALPHA_SPAN + 24, 30 ) ) ;
-  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-  surface.fillRect( 120 - 70 * lineTime, logoY + 24, 140 * lineTime, 2 ) ;
   surface.restore( ) ;
 } ;
 
@@ -645,18 +641,10 @@ TitleState.prototype._displayPressKey = function( surface ) {
     return ;
 
   surface.save( ) ;
-  var barAlpha = __easeOut( __animTime( this.count, menuStart + 40, 16 ) ) ;
-  if( barAlpha > 0 ) {
-    var barGradient = surface.createLinearGradient( 20, 0, 240, 0 ) ;
-    barGradient.addColorStop( 0, 'rgba( 200, 30, 40, 0 )' ) ;
-    barGradient.addColorStop( 0.5, 'rgba( 200, 30, 40, 0.28 )' ) ;
-    barGradient.addColorStop( 1, 'rgba( 200, 30, 40, 0 )' ) ;
-    surface.globalAlpha = barAlpha ;
-    surface.fillStyle = barGradient ;
-    surface.fillRect( 20, this.barY - 25, 220, 32 ) ;
-    surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-    surface.fillRect( 46, this.barY - 15 + 4 * Math.sin( this.count / 12 ), 3, 12 ) ;
-  }
+  // a yin-yang orb glides to the picked item, spinning
+  var orbAlpha = __easeOut( __animTime( this.count, menuStart + 40, 16 ) ) ;
+  if( orbAlpha > 0 )
+    __drawYinYang( surface, 50, this.barY - 8, 10, this.count * 0.08, orbAlpha ) ;
 
   surface.font = "24px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
