@@ -630,6 +630,10 @@ TitleState.prototype._displayMessage = function( surface ) {
   surface.fillText( 'JSTouhou', 122, logoY + 2 ) ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillText( 'JSTouhou', 120, logoY ) ;
+
+  var lineTime = __easeOut( __animTime( this.count, TitleState._GLOBALALPHA_SPAN + 24, 30 ) ) ;
+  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+  surface.fillRect( 120 - 70 * lineTime, logoY + 24, 140 * lineTime, 2 ) ;
   surface.restore( ) ;
 } ;
 

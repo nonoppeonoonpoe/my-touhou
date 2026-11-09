@@ -2810,6 +2810,9 @@ ClearState.prototype.updateDisplay = function( surface ) {
   surface.textAlign = 'center' ;
   surface.font = 'bold 26px Arial' ;
   surface.fillText( 'Stage ' + ( this.stage.stageIndex + 1 ) + ' Clear', 240, 110 - 16 * ( 1 - __easeBack( titleTime ) ) ) ;
+  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+  var lineWidth = 220 * __easeOut( __animTime( this.count, rowStart + 8, 20 ) ) ;
+  surface.fillRect( 240 - lineWidth / 2, 124, lineWidth, 2 ) ;
 
   var rows = [ ] ;
   if( ! this.stage.oldRules ) {
