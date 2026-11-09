@@ -365,7 +365,9 @@ Game.prototype._runStep = function( ) {
     this._runOneStep( ) ;
     this._drawStep( ) ;
   } else {
-    var stepMs = 1000 / Game._FPS ;
+    // debug speed: 0.5 is slow motion, 2 is fast forward
+    var gameSpeed = this.speed || 1 ;
+    var stepMs = 1000 / ( Game._FPS * gameSpeed ) ;
     var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
     if( this.lastStepTime === undefined || nowTime - this.lastStepTime > 250 )
       this.lastStepTime = nowTime - stepMs ;
@@ -375,7 +377,7 @@ Game.prototype._runStep = function( ) {
     var frameMs = this.lastFrameTime === undefined ? 0 : nowTime - this.lastFrameTime ;
     this.lastFrameTime = nowTime ;
     var stepsDone = 0 ;
-    if( Math.abs( frameMs - stepMs ) < 2.5 ) {
+    if( gameSpeed == 1 && Math.abs( frameMs - stepMs ) < 2.5 ) {
       this._runOneStep( ) ;
       this.lastStepTime = nowTime ;
       stepsDone = 1 ;
