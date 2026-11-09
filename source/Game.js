@@ -590,6 +590,8 @@ Game.prototype.notifyCharacterSelectConclusion = function(index) {
     var params = {};
     params.characterIndex = index; // me
     params.seed = seed;
+    params.practice = this.pendingPractice || null;
+    this.pendingPractice = null;
     this._changeState(Game._STATE_IN_STAGE, params);
   }
 };

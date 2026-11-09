@@ -198,10 +198,12 @@ TitleState = function( opening ) {
   this.showControls = false ;
   this.showOptions = false ;
   this.optionIndex = 0 ;
+  this.showPractice = false ;
+  this.practiceIndex = 0 ;
 }
 __inherit( TitleState, OpeningAbstractState ) ;
 
-TitleState._MENU = [ 'Start', 'Replay', 'Options', 'Controls' ] ;
+TitleState._MENU = [ 'Start', 'Practice', 'Replay', 'Options', 'Controls' ] ;
 
 // key in game.options, label, lowest, highest
 TitleState._OPTIONS = [
@@ -235,6 +237,8 @@ TitleState.prototype.init = function( ) {
   this.showControls = false ;
   this.showOptions = false ;
   this.optionIndex = 0 ;
+  this.showPractice = false ;
+  this.practiceIndex = 0 ;
   this.state = TitleState._STATE_DISPLAYING ;
   this.soundBGM( Game._BGM_TITLE ) ;
 } ;
@@ -256,6 +260,88 @@ TitleState.prototype.updateDisplay = function( surface ) {
   this._displayPressKey( surface ) ;
   this._displayControls( surface ) ;
   this._displayOptions( surface ) ;
+  this._displayPractice( surface ) ;
+} ;
+
+
+// every stage, then every spell card of every boss
+TitleState.prototype._getPracticeList = function( ) {
+  var practiceList = [ ] ;
+  for( var stageNum = 0; stageNum < __bossesParams.length; stageNum++ ) {
+    practiceList.push( { 'label': 'Stage ' + ( stageNum + 1 ),
+                         'stage': stageNum, 'boss': 0, 'phase': 0 } ) ;
+  }
+  for( var spellStage = 0; spellStage < __bossesParams.length; spellStage++ ) {
+    var bosses = __bossesParams[ spellStage ] ;
+    for( var bossNum = 0; bossNum < bosses.length; bossNum++ ) {
+      var phases = bosses[ bossNum ].params ;
+      for( var phaseNum = 0; phaseNum < phases.length; phaseNum++ ) {
+        if( ! phases[ phaseNum ].spellCard )
+          continue ;
+        practiceList.push( { 'label': 'Stage ' + ( spellStage + 1 ) + ': ' + phases[ phaseNum ].spellCard,
+                             'stage': spellStage, 'boss': bossNum + 1, 'phase': phaseNum, 'spell': true } ) ;
+      }
+    }
+  }
+  return practiceList ;
+} ;
+
+
+TitleState.prototype._displayPractice = function( surface ) {
+  if( ! this.showPractice )
+    return ;
+
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
+  var practiceList = this._getPracticeList( ) ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.85 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, width, height ) ;
+  surface.globalAlpha = 1.0 ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.textBaseline = 'middle' ;
+
+  surface.font = "28px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.fillText( 'Practice', width / 2, 90 ) ;
+  surface.fillRect( width / 2 - 160, 115, 320, 1 ) ;
+
+  surface.font = "18px 'Comic Sans MS'" ;
+  for( var i = 0; i < practiceList.length; i++ ) {
+    surface.globalAlpha = ( i == this.practiceIndex ) ? 1.0 : 0.4 ;
+    surface.fillText( practiceList[ i ].label, width / 2, 150 + i * 30 ) ;
+  }
+
+  surface.font = "16px 'Comic Sans MS'" ;
+  surface.globalAlpha = 0.6 ;
+  surface.fillText( 'Z to play, X to go back', width / 2, height - 45 ) ;
+  surface.restore( ) ;
+} ;
+
+
+TitleState.prototype._handlePracticeKey = function( e ) {
+  var practiceList = this._getPracticeList( ) ;
+  switch( e.keyCode ) {
+    case 38: // up
+      this.practiceIndex = ( this.practiceIndex + practiceList.length - 1 ) % practiceList.length ;
+      this.soundEffect( Game._SE_SELECT ) ;
+      break ;
+    case 40: // down
+      this.practiceIndex = ( this.practiceIndex + 1 ) % practiceList.length ;
+      this.soundEffect( Game._SE_SELECT ) ;
+      break ;
+    case 88: // x
+      this.soundEffect( Game._SE_SELECT ) ;
+      this.showPractice = false ;
+      break ;
+    case 90: // z
+      this.soundEffect( Game._SE_SELECT ) ;
+      this.showPractice = false ;
+      this.opening.game.pendingPractice = practiceList[ this.practiceIndex ] ;
+      this.opening.notifyTitleConclusion( ) ;
+      break ;
+  }
 } ;
 
 
@@ -442,7 +528,7 @@ TitleState.prototype._displayPressKey = function( surface ) {
       surface.globalAlpha = 1.0 ;
     else
       surface.globalAlpha = 0.2 ;
-    surface.fillText( TitleState._MENU[ i ], 120, 300 + i * 40 ) ;
+    surface.fillText( TitleState._MENU[ i ], 120, 270 + i * 36 ) ;
   }
 
   surface.restore( ) ;
@@ -452,6 +538,11 @@ TitleState.prototype._displayPressKey = function( surface ) {
 TitleState.prototype.handleKeyDown = function( e ) {
   if( this.showOptions ) {
     this._handleOptionsKey( e ) ;
+    return ;
+  }
+
+  if( this.showPractice ) {
+    this._handlePracticeKey( e ) ;
     return ;
   }
 
@@ -467,11 +558,15 @@ TitleState.prototype.handleKeyDown = function( e ) {
     case 90: // z
       this.soundEffect( Game._SE_SELECT ) ;
       if( this.state == TitleState._STATE_DISPLAYED ) {
-        if( this.index == 0 )
+        if( this.index == 0 ) {
+          this.opening.game.pendingPractice = null ;
           this.opening.notifyTitleConclusion( ) ;
-        else if( this.index == 1 )
+        } else if( this.index == 1 ) {
+          this.showPractice = true ;
+          this.practiceIndex = 0 ;
+        } else if( this.index == 2 )
           this.opening.notifyReplaySelectBegin( ) ;
-        else if( this.index == 2 ) {
+        else if( this.index == 3 ) {
           this.showOptions = true ;
           this.optionIndex = 0 ;
         } else
