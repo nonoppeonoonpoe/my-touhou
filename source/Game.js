@@ -411,6 +411,7 @@ Game._DEBUG_WORD = 'DEBUG' ;
 
 Game.prototype.handleKeyDown = function( e ) {
   this._checkDebugWord( e ) ;
+  this._syncShift( e ) ;
 
   // TODO: temporal
   if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
@@ -437,12 +438,34 @@ Game.prototype._checkDebugWord = function( e ) {
 
 // let go of every key when the window loses focus, so nothing stays stuck down
 Game.prototype.handleBlur = function( ) {
+  this.shiftHeld = false ;
   if( this.states[ this.state ].releaseAllKeys )
     this.states[ this.state ].releaseAllKeys( ) ;
 } ;
 
 
+/*
+ * some browsers (gmod's) never send a key event for shift on its own,
+ * so the shift flag on other keys is turned into a shift press or release
+ */
+Game.prototype._syncShift = function( e ) {
+  if( e.keyCode == 16 ) {
+    this.shiftHeld = e.type == 'keydown' ;
+    return ;
+  }
+  if( e.shiftKey === undefined || !! e.shiftKey == !! this.shiftHeld )
+    return ;
+  this.shiftHeld = !! e.shiftKey ;
+  var shiftEvent = { keyCode: 16, shiftKey: this.shiftHeld, type: this.shiftHeld ? 'keydown' : 'keyup', preventDefault: function( ) { } } ;
+  if( this.shiftHeld )
+    this.handleKeyDown( shiftEvent ) ;
+  else
+    this.handleKeyUp( shiftEvent ) ;
+} ;
+
+
 Game.prototype.handleKeyUp = function( e ) {
+  this._syncShift( e ) ;
   // TODO: temporal
   if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
     return;
