@@ -1064,7 +1064,8 @@ EnemyBeam.prototype.display = function( surface ) {
     var t4 = ( p[ i ].y2 - p[ i ].y0 ) / height ;
     var t5 = p[ i ].x0 ;
     var t6 = p[ i ].y0 ;
-    surface.setTransform( t1, t2, t3, t4, t5, t6 ) ;
+    var ts = surface._scale || 1 ;
+    surface.setTransform( t1 * ts, t2 * ts, t3 * ts, t4 * ts, t5 * ts, t6 * ts ) ;
 
     surface.globalAlpha = 0.5 ;
     surface.drawImage( this.image,
@@ -1097,7 +1098,8 @@ EnemyBeam.prototype.display = function( surface ) {
     var t4 = ( p[ i ].y3 - p[ i ].y1 ) / height;
     var t5 = p[ i ].x2 ;
     var t6 = p[ i ].y2 ;
-    surface.setTransform( t1, t2, t3, t4, t5, t6 ) ;
+    var ts = surface._scale || 1 ;
+    surface.setTransform( t1 * ts, t2 * ts, t3 * ts, t4 * ts, t5 * ts, t6 * ts ) ;
 
     surface.globalAlpha = 0.5 ;
     surface.drawImage( this.image,

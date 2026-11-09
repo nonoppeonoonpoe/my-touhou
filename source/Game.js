@@ -2,14 +2,18 @@ function Game(mainCanvas, bgCanvas) {
   this.gs = new GameSocket(this);
   this.gs.connect();
 
+  // the canvases can be bigger than the game; everything is drawn at 640x480 and scaled up
+  this.scale = Number(mainCanvas.getAttribute('width')) / Game._BASE_WIDTH;
   this.surface = mainCanvas.getContext('2d');
+  this.surface._scale = this.scale;
+  this.surface.scale(this.scale, this.scale);
   this.surface.fillStyle = 'white';
 
   this.bgLayer = Canvas2DLayer.pickLayer(bgCanvas);
+  this.bgLayer.scale = this.scale;
 
-//  this.width = Number(mainCanvas.getAttribute('width')) - Game._SIDE_WIDTH;
-  this.width = Number(mainCanvas.getAttribute('width'));
-  this.height = Number(mainCanvas.getAttribute('height'));
+  this.width = Game._BASE_WIDTH;
+  this.height = Game._BASE_HEIGHT;
   this.sounds = [ ] ;
   this.bgms = [ ] ;
   this.options = this._loadOptions( ) ;
@@ -59,6 +63,9 @@ function Game(mainCanvas, bgCanvas) {
   this.onRan = null;
   this.onRoomUpdate = null;
 }
+
+Game._BASE_WIDTH = 640;
+Game._BASE_HEIGHT = 480;
 
 Game.prototype.Randomizer = __randomizer;
 

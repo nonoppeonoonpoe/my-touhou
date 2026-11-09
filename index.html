@@ -2,7 +2,95 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JSTouhou</title>
+<style>
+html, body { margin: 0; padding: 0; }
+body {
+  background: #0d0b14;
+  background-image: radial-gradient(ellipse at top, #2a1630 0%, #0d0b14 60%);
+  background-repeat: no-repeat;
+  color: #e8e2ee;
+  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+}
+a { color: #f2b8c6; }
+.page { max-width: 1320px; margin: 0 auto; padding: 18px 16px 40px 16px; }
+.top { text-align: center; margin-bottom: 14px; }
+.top h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: 3px;
+  color: #ffffff;
+}
+.top h1 span { color: #e8455f; }
+.top p { margin: 4px 0 0 0; color: #a89cb4; font-size: 14px; }
+
+.stage { text-align: center; }
+.frame {
+  display: inline-block;
+  position: relative;
+  padding: 6px;
+  background: #160f1c;
+  border: 1px solid #6b2333;
+  box-shadow: 0 0 0 1px #2a1820, 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+#scaler { position: relative; overflow: hidden; background: #000; }
+#canvasdiv {
+  position: absolute; left: 0; top: 0;
+  width: 640px; height: 480px;
+  -webkit-transform-origin: 0 0; transform-origin: 0 0;
+}
+#canvasdiv canvas { position: absolute; left: 0; top: 0; }
+#mainCanvas { z-index: 2; width: 640px; height: 480px; }
+#bgCanvas { z-index: 1; width: 480px; height: 480px; }
+
+.bar { margin: 10px 0 0 0; font-size: 0; }
+.bar button {
+  font-family: inherit; font-size: 14px;
+  background: #22172a; color: #e8e2ee;
+  border: 1px solid #4a3054; padding: 6px 14px; margin: 0 3px;
+  cursor: pointer;
+}
+.bar button:hover { background: #33213d; }
+.bar button.on { background: #6b2333; border-color: #e8455f; color: #ffffff; }
+.bar .label { font-size: 13px; color: #a89cb4; margin: 0 6px 0 14px; }
+
+.cards { margin: 22px auto 0 auto; max-width: 900px; overflow: hidden; }
+.card {
+  float: left; width: 50%; box-sizing: border-box; padding: 0 8px;
+}
+.card .inner { background: #160f1c; border: 1px solid #33213d; padding: 12px 16px; }
+.card h2 { margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #f2b8c6; letter-spacing: 1px; }
+.card table { border-collapse: collapse; width: 100%; }
+.card td { padding: 3px 0; vertical-align: top; }
+.card td.k { width: 120px; white-space: nowrap; }
+kbd {
+  display: inline-block; min-width: 18px; text-align: center;
+  font-family: Consolas, monospace; font-size: 12px;
+  background: #2a2030; border: 1px solid #4a3054; border-bottom-width: 2px;
+  padding: 1px 5px; margin-right: 2px; color: #ffffff;
+}
+.card ul { margin: 0; padding-left: 18px; }
+.card li { margin: 3px 0; }
+details { max-width: 884px; margin: 16px auto 0 auto; background: #160f1c; border: 1px solid #33213d; padding: 10px 16px; }
+summary { cursor: pointer; color: #f2b8c6; }
+.credits { padding-left: 18px; font-size: 13px; color: #a89cb4; word-break: break-all; }
+.foot { text-align: center; color: #6f6479; font-size: 12px; margin-top: 18px; }
+
+/* fullscreen, or the page shown inside the arcade: only the game, centered on black */
+body.only { background: #000; overflow: hidden; }
+body.only .top, body.only .bar, body.only .cards, body.only details, body.only .foot { display: none; }
+body.only .page { max-width: none; padding: 0; }
+body.only .frame { padding: 0; border: 0; box-shadow: none; background: #000; }
+body.only.showbar .bar { display: block; position: fixed; right: 10px; top: 10px; margin: 0; z-index: 5; }
+body.only.showbar .bar .label, body.only.showbar .bar .size { display: none; }
+
+@media (max-width: 700px) {
+  .card { float: none; width: 100%; margin-bottom: 10px; }
+}
+</style>
 <script type="text/javascript" src="lib/glMatrix-0.9.5.min.js"></script>
 <script type="text/javascript" src="utility/Inherit.js"></script>
 <script type="text/javascript" src="utility/Draw.js"></script>
@@ -56,42 +144,196 @@ var init = function( ) {
   window.onkeyup = function(event) { game.handleKeyUp(event); };
   window.onblur = function() { game.handleBlur(); };
   document.addEventListener('visibilitychange', function() { if(document.hidden) game.handleBlur(); });
+  pageSetup( ) ;
   game.run( ) ;
 } ;
+
+// page around the game: size buttons, fullscreen, and a game-only view inside frames
+var pageGameWidth = 640 ;
+var pageGameHeight = 480 ;
+var pageSize = 'fit' ;
+var pageSizeKey = 'jstouhou_page_size' ;
+
+function pageInFrame( ) {
+  try {
+    return window.self !== window.top ;
+  } catch( err ) {
+    return true ;
+  }
+}
+
+function pageIsFullscreen( ) {
+  return !! ( document.fullscreenElement || document.webkitFullscreenElement ) ;
+}
+
+function pageGameOnly( ) {
+  return pageInFrame( ) || pageIsFullscreen( ) || document.body.className.indexOf( 'fill' ) >= 0 ;
+}
+
+function pageScale( ) {
+  var roomWidth, roomHeight ;
+  if( pageGameOnly( ) ) {
+    roomWidth = window.innerWidth ;
+    roomHeight = window.innerHeight ;
+  } else {
+    if( pageSize != 'fit' )
+      return Number( pageSize ) ;
+    roomWidth = Math.min( window.innerWidth - 48, 1280 ) ;
+    roomHeight = window.innerHeight - 170 ;
+  }
+  var fitScale = Math.min( roomWidth / pageGameWidth, roomHeight / pageGameHeight ) ;
+  return Math.max( 0.5, fitScale ) ;
+}
+
+function pageLayout( ) {
+  var only = pageGameOnly( ) ;
+  var classes = [ ] ;
+  if( only )
+    classes.push( 'only' ) ;
+  if( only && ! pageInFrame( ) )
+    classes.push( 'showbar' ) ;
+  if( document.body.className.indexOf( 'fill' ) >= 0 )
+    classes.push( 'fill' ) ;
+  document.body.className = classes.join( ' ' ) ;
+
+  var scale = pageScale( ) ;
+  var shownWidth = Math.floor( pageGameWidth * scale ) ;
+  var shownHeight = Math.floor( pageGameHeight * scale ) ;
+  var scaler = document.getElementById( 'scaler' ) ;
+  scaler.style.width = shownWidth + 'px' ;
+  scaler.style.height = shownHeight + 'px' ;
+  var transformText = 'scale(' + scale + ')' ;
+  var canvasBox = document.getElementById( 'canvasdiv' ) ;
+  canvasBox.style.webkitTransform = transformText ;
+  canvasBox.style.transform = transformText ;
+
+  var frame = document.getElementById( 'frame' ) ;
+  frame.style.marginTop = only ? Math.max( 0, Math.floor( ( window.innerHeight - shownHeight ) / 2 ) ) + 'px' : '0' ;
+
+  var sizeButtons = document.querySelectorAll( '.bar .size' ) ;
+  for( var i = 0; i < sizeButtons.length; i++ ) {
+    var isOn = sizeButtons[ i ].getAttribute( 'data-size' ) == pageSize ;
+    sizeButtons[ i ].className = isOn ? 'size on' : 'size' ;
+  }
+  document.getElementById( 'fullbtn' ).innerHTML = only ? 'Exit full screen' : 'Full screen' ;
+}
+
+function pageSetSize( sizeName ) {
+  pageSize = sizeName ;
+  try {
+    window.localStorage.setItem( pageSizeKey, sizeName ) ;
+  } catch( err ) {
+  }
+  pageLayout( ) ;
+}
+
+function pageToggleFullscreen( ) {
+  if( pageIsFullscreen( ) ) {
+    if( document.exitFullscreen )
+      document.exitFullscreen( ) ;
+    else if( document.webkitExitFullscreen )
+      document.webkitExitFullscreen( ) ;
+    return ;
+  }
+  if( document.body.className.indexOf( 'fill' ) >= 0 ) {
+    document.body.className = document.body.className.replace( 'fill', '' ) ;
+    pageLayout( ) ;
+    return ;
+  }
+  var root = document.documentElement ;
+  var request = root.requestFullscreen || root.webkitRequestFullscreen ;
+  if( request ) {
+    try {
+      var result = request.call( root ) ;
+      if( result && result['catch'] )
+        result['catch']( pageFillWindow ) ;
+      return ;
+    } catch( err ) {
+    }
+  }
+  // no fullscreen allowed here, so fill the window instead
+  pageFillWindow( ) ;
+}
+
+function pageFillWindow( ) {
+  document.body.className += ' fill' ;
+  pageLayout( ) ;
+}
+
+function pageSetup( ) {
+  try {
+    var savedSize = window.localStorage.getItem( pageSizeKey ) ;
+    if( savedSize )
+      pageSize = savedSize ;
+  } catch( err ) {
+  }
+  var sizeButtons = document.querySelectorAll( '.bar .size' ) ;
+  for( var i = 0; i < sizeButtons.length; i++ ) {
+    sizeButtons[ i ].onclick = function( ) { pageSetSize( this.getAttribute( 'data-size' ) ) ; this.blur( ) ; } ;
+  }
+  document.getElementById( 'fullbtn' ).onclick = function( ) { pageToggleFullscreen( ) ; this.blur( ) ; } ;
+  window.addEventListener( 'resize', pageLayout ) ;
+  document.addEventListener( 'fullscreenchange', pageLayout ) ;
+  document.addEventListener( 'webkitfullscreenchange', pageLayout ) ;
+  // f toggles full screen, but not while a game key is being used
+  window.addEventListener( 'keydown', function( event ) {
+    if( event.keyCode == 70 && ! event.ctrlKey && ! event.altKey && ! event.metaKey && ! pageInFrame( ) )
+      pageToggleFullscreen( ) ;
+  } ) ;
+  pageLayout( ) ;
+}
 
 </script>
 </head>
 
 <body onLoad="init( )">
+<div class="page">
 
-<div id="canvasdiv" style="position:relative; width:640px; height:480px">
-<canvas id="mainCanvas" width="640" height="480"
- style="z-index: 2; position:absolute;left0px;top0px;"></canvas>
-<canvas id="bgCanvas" width="480" height="480"
- style="z-index: 1; position:absolute;left0px;top0px;"></canvas>
+<div class="top">
+<h1>JS<span>TOUHOU</span></h1>
+<p>A Touhou style danmaku shooter that runs in your browser</p>
 </div>
 
-<p>
-How to play
-</p>
+<div class="stage">
+<div class="frame" id="frame">
+<div id="scaler">
+<div id="canvasdiv">
+<canvas id="mainCanvas" width="1280" height="960"></canvas>
+<canvas id="bgCanvas" width="960" height="960"></canvas>
+</div>
+</div>
+</div>
+<div class="bar">
+<span class="label">Size</span><button class="size" data-size="1">1x</button><button class="size" data-size="1.5">1.5x</button><button class="size" data-size="2">2x</button><button class="size" data-size="fit">Fit</button><span class="label"></span><button id="fullbtn">Full screen</button>
+</div>
+</div>
+
+<div class="cards">
+<div class="card"><div class="inner">
+<h2>Controls</h2>
+<table>
+<tr><td class="k"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></td><td>Move, pick in menus</td></tr>
+<tr><td class="k"><kbd>Z</kbd></td><td>Shoot, OK</td></tr>
+<tr><td class="k"><kbd>X</kbd></td><td>Bomb, back</td></tr>
+<tr><td class="k"><kbd>Shift</kbd></td><td>Focus: move slowly and show your hitbox</td></tr>
+<tr><td class="k"><kbd>Esc</kbd> <kbd>P</kbd></td><td>Pause</td></tr>
+<tr><td class="k"><kbd>F</kbd></td><td>Full screen</td></tr>
+</table>
+</div></div>
+<div class="card"><div class="inner">
+<h2>How to play</h2>
 <ul>
-<li>Cursor key: move / character select</li>
-<li>Z:          shot / ok</li>
-<li>X:          bomb / cancel</li>
-<li>Shift:      slow</li>
-<li>Space:      character change(for debug)</li>
-<li>Y:          viewpoint change</li>
+<li>Only the small dot in the middle of your character can be hit. Hold Shift to see it.</li>
+<li>Bullets that pass close by count as graze and give points.</li>
+<li>Bomb just after getting hit to save your life.</li>
+<li>Options, Practice and saved Replays are on the title screen.</li>
 </ul>
+</div></div>
+</div>
 
-<p>
-Turn your hardware acceleration on to fully enjoy this game.<br />
-See &quot;chrome://gpu&quot; and &quot;chrome://flags&quot; on your chrome to check if your hardware acceleration is enabled.
-</p>
-
-<p>
-Thanks for all the images and musics.
-</p>
-<ul>
+<details>
+<summary>Credits</summary>
+<ul class="credits">
 <li>SE, etc  <a href="http://www.danmakufu.net/?%E5%88%B6%E4%BD%9C%2F%E3%83%AA%E3%83%B3%E3%82%AF">http://www.danmakufu.net/?%E5%88%B6%E4%BD%9C%2F%E3%83%AA%E3%83%B3%E3%82%AF</a></li>
 <li>SE       <a href="http://commons.nicovideo.jp/material/nc1456">http://commons.nicovideo.jp/material/nc1456</a></li>
 <li>Face     <a href="http://kinginsan.blog60.fc2.com/">http://kinginsan.blog60.fc2.com/</a></li>
@@ -106,14 +348,11 @@ Thanks for all the images and musics.
 <li>BGM      <a href="http://commons.nicovideo.jp/material/nc13447">http://commons.nicovideo.jp/material/nc13447</a></li>
 <li>BGM      <a href="http://commons.nicovideo.jp/material/nc22928">http://commons.nicovideo.jp/material/nc22928</a></li>
 </ul>
+<p class="credits" style="word-break: normal;">Based on <a href="https://github.com/takahirox/toho-like-js">toho-like-js</a> by <a href="http://twitter.com/superhoge">@superhoge</a>.</p>
+</details>
 
-<p>
-This game is made by <a href="http://twitter.com/superhoge">@suprehoge</a>
-</p>
+<div class="foot">Touhou Project belongs to Team Shanghai Alice. This is a fan game.</div>
 
-<p>
-<a href="https://github.com/takahirox/toho-like-js">Source code</a>
-</p>
-
+</div>
 </body>
 </html>
