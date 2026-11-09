@@ -38,6 +38,7 @@ function StageState( game ) {
   this.pending = 0 ;
   this.bgScale = 1 ;
   this.didContinue = false ;
+  this.continuesUsed = 0 ;
 
   this.initialized = false ; // TODO: temporal
   this.playRecords = [ ] ;
@@ -919,6 +920,7 @@ StageState.prototype.reset = function( ) {
 
   this.spellCard = null ;
   this.didContinue = false ;
+  this.continuesUsed = 0 ;
 
   this.fighterManager.reset( ) ;
   this.fighterOptionManager.reset( ) ;
@@ -968,7 +970,7 @@ StageState.prototype.putKeyOffRecord = function( record ) {
 
 // only normal single play runs with no cheats get saved
 StageState.prototype.canSaveReplay = function( ) {
-  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && ! this.practice && this.playRecords.length > 0 ;
+  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && ! this.practice && ! this.didContinue && this.playRecords.length > 0 ;
 } ;
 
 
@@ -1497,8 +1499,28 @@ StageState.prototype.notifyBossMovedNextStage = function( boss ) {
 } ;
 
 
+StageState.prototype._MAX_CONTINUES = 3 ;
+
+
+StageState.prototype.getContinuesLeft = function( ) {
+  if( this.oldRules )
+    return 1 ;
+  if( this.practice )
+    return 0 ;
+  return Math.max( 0, this._MAX_CONTINUES - this.continuesUsed ) ;
+} ;
+
+
 StageState.prototype.notifyContinue = function( ) {
+  if( this.getContinuesLeft( ) <= 0 )
+    return ;
   this.didContinue = true ;
+  // like eosd the score starts over and its last digit counts the continues
+  if( ! this.oldRules ) {
+    this.continuesUsed++ ;
+    this.score = this.continuesUsed ;
+    this.viewScore = this.score ;
+  }
   this.bombs = this.oldRules ? 2 : this.getStartBombs( ) ;
   this.players = this.oldRules ? 3 : this.getStartPlayers( ) ;
   this.fighterManager.recoverWhenContinue();
@@ -2548,7 +2570,7 @@ __inherit( GameOverState, StageAbstractState ) ;
 
 
 GameOverState.prototype.init = function( ) {
-  this.index = 0 ;
+  this.index = this.stage.getContinuesLeft( ) > 0 ? 0 : 1 ;
 } ;
 
 
@@ -2563,6 +2585,8 @@ GameOverState.prototype.handleKeyDown = function( e ) {
   switch( e.keyCode ) {
     case 38: // up
     case 40: // down
+      if( this.stage.getContinuesLeft( ) <= 0 )
+        break ;
       this._soundEffect( Game._SE_SELECT ) ;
       this.index = ( this.index == 0 ) ? 1 : 0 ;
       break ;
@@ -2597,7 +2621,13 @@ GameOverState.prototype.updateDisplay = function( surface ) {
   } else {
     surface.globalAlpha = 0.2 ;
   }
-  surface.fillText( 'Continue', 240, 200 ) ;
+  var continuesLeft = this.stage.getContinuesLeft( ) ;
+  if( continuesLeft <= 0 )
+    surface.globalAlpha = 0.1 ;
+  var continueText = 'Continue' ;
+  if( ! this.stage.oldRules )
+    continueText += ' (' + continuesLeft + ' left)' ;
+  surface.fillText( continueText, 240, 200 ) ;
   if( this.index == 0 ) {
     surface.globalAlpha = 0.2 ;
   } else {
