@@ -50,11 +50,60 @@ LoadingState.prototype._loadSEs = function( ) {
   var self = this ;
   for( var key in Game._SES ) {
     this.game.sounds[ key ] = new Audio( Game._SES[ key ] ) ;
+    if( this.game.audioContext ) {
+      this._loadBuffer( key ) ;
+      continue ;
+    }
     this.game.sounds[ key ].addEventListener( 'canplay', function( e ) {
       self.loadSoundNum++ ;
     } ) ;
     this.game.sounds[ key ].load( ) ;
   }
+} ;
+
+
+// decodes a sound for web audio; if that fails it falls back to the audio element
+LoadingState.prototype._loadBuffer = function( key ) {
+  var self = this ;
+  var game = this.game ;
+  var fallBack = function( ) {
+    game.sounds[ key ].addEventListener( 'canplay', function( e ) {
+      self.loadSoundNum++ ;
+    } ) ;
+    game.sounds[ key ].load( ) ;
+  } ;
+  var request = new XMLHttpRequest( ) ;
+  request.open( 'GET', Game._SES[ key ], true ) ;
+  request.responseType = 'arraybuffer' ;
+  request.onload = function( ) {
+    if( request.status >= 400 ) {
+      fallBack( ) ;
+      return ;
+    }
+    var decodeDone = false ;
+    var onDecoded = function( buffer ) {
+      if( decodeDone )
+        return ;
+      decodeDone = true ;
+      game.soundBuffers[ key ] = buffer ;
+      self.loadSoundNum++ ;
+    } ;
+    var onFailed = function( ) {
+      if( decodeDone )
+        return ;
+      decodeDone = true ;
+      fallBack( ) ;
+    } ;
+    try {
+      var decoding = game.audioContext.decodeAudioData( request.response, onDecoded, onFailed ) ;
+      if( decoding && decoding.catch )
+        decoding.catch( onFailed ) ;
+    } catch( err ) {
+      onFailed( ) ;
+    }
+  } ;
+  request.onerror = fallBack ;
+  request.send( ) ;
 } ;
 
 

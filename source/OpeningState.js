@@ -212,7 +212,8 @@ TitleState._OPTIONS = [
   [ 'lives', 'Starting lives', 0, 8 ],
   [ 'bombs', 'Starting bombs', 0, 8 ],
   [ 'shake', 'Screen shake', 0, 1 ],
-  [ 'quality', 'Quality', 0, 1 ]
+  [ 'quality', 'Quality', 0, 1 ],
+  [ 'fps', 'Show FPS', 0, 1 ]
 ] ;
 
 TitleState._CONTROLS = [
@@ -339,7 +340,7 @@ TitleState.prototype._showPanel = function( ) {
 
 TitleState.prototype._getPanelRowY = function( ) {
   if( this.showOptions )
-    return 180 + this.optionIndex * 36 ;
+    return 170 + this.optionIndex * 32 ;
   if( this.showPractice ) {
     var listSize = this._getPracticeList( ).length ;
     var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, listSize - 9 ) ) ;
@@ -459,7 +460,7 @@ TitleState.prototype._displayOptions = function( surface ) {
   var options = this.opening.game.options ;
   surface.save( ) ;
   this._openPanel( surface ) ;
-  this._drawPanelBar( surface, 460, 34 ) ;
+  this._drawPanelBar( surface, 460, 30 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textBaseline = 'middle' ;
 
@@ -470,7 +471,7 @@ TitleState.prototype._displayOptions = function( surface ) {
 
   surface.font = "20px 'Comic Sans MS'" ;
   for( var i = 0; i <= TitleState._OPTIONS.length; i++ ) {
-    var lineY = 180 + i * 36 ;
+    var lineY = 170 + i * 32 ;
     surface.globalAlpha = ( ( i == this.optionIndex ) ? 1.0 : 0.4 ) * this.panelAlpha ;
     if( i == TitleState._OPTIONS.length ) {
       surface.textAlign = 'center' ;
@@ -486,6 +487,8 @@ TitleState.prototype._displayOptions = function( surface ) {
       valueText = options.shake ? 'On' : 'Off' ;
     else if( row[ 0 ] == 'quality' )
       valueText = options.quality ? 'High' : 'Low' ;
+    else if( row[ 0 ] == 'fps' )
+      valueText = options.fps ? 'On' : 'Off' ;
     surface.fillText( '<  ' + valueText + '  >', width / 2 + 50, lineY ) ;
   }
 

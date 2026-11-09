@@ -15,6 +15,16 @@ function Game(mainCanvas, bgCanvas) {
   this.width = Game._BASE_WIDTH;
   this.height = Game._BASE_HEIGHT;
   this.sounds = [ ] ;
+  this.soundBuffers = [ ] ;
+  this.playingSources = [ ] ;
+  this.audioContext = null ;
+  try {
+    var AudioContextType = window.AudioContext || window.webkitAudioContext ;
+    if( AudioContextType )
+      this.audioContext = new AudioContextType( ) ;
+  } catch( err ) {
+    this.audioContext = null ;
+  }
   this.bgms = [ ] ;
   this.options = this._loadOptions( ) ;
   this.images = [ ] ;
@@ -327,10 +337,36 @@ Game.prototype.soundEffect = function(key) {
   var baseVolume = Game._SE_VOLUMES[ key ] ;
   this.sounds[ key ].volume = baseVolume === void 0 ? 0.1 : baseVolume ;
   this.sounds[ key ].volume = Math.min( 1, this.sounds[ key ].volume * this.options.sound / 5 ) ;
+  if( this.soundBuffers[ key ] ) {
+    this._playBuffer( key, this.sounds[ key ].volume ) ;
+    return ;
+  }
   this.sounds[ key ].pause();
   this.sounds[ key ].currentTime = 0;
   this.sounds[ key ].play();
 //  this.sounds[ key ] = new Audio( this.sounds[ key ].src ) ;
+} ;
+
+
+// web audio plays a decoded copy instead of restarting an audio element, which is a lot cheaper
+Game.prototype._playBuffer = function( key, volume ) {
+  var audioContext = this.audioContext ;
+  if( audioContext.state == 'suspended' )
+    audioContext.resume( ) ;
+  if( this.playingSources[ key ] ) {
+    try {
+      this.playingSources[ key ].stop( ) ;
+    } catch( err ) {
+    }
+  }
+  var source = audioContext.createBufferSource( ) ;
+  source.buffer = this.soundBuffers[ key ] ;
+  var gain = audioContext.createGain( ) ;
+  gain.gain.value = volume ;
+  source.connect( gain ) ;
+  gain.connect( audioContext.destination ) ;
+  source.start( 0 ) ;
+  this.playingSources[ key ] = source ;
 } ;
 
 
@@ -362,7 +398,10 @@ Game.prototype.applyMusicVolume = function( ) {
  * lives are the spare lives you start with and bombs refill to that on respawn.
  */
 Game._OPTIONS_KEY = 'jstouhou_options' ;
-Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3, 'shake': 1, 'quality': 1 } ;
+Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3, 'shake': 1, 'quality': 1, 'fps': 0 } ;
+
+// inside the loading screen (?embed) the game starts on low quality and keeps its own quality setting
+Game._EMBED = /[?&]embed\b/.test( window.location.search ) ;
 
 Game.prototype._loadOptions = function( ) {
   var options = { } ;
@@ -374,6 +413,8 @@ Game.prototype._loadOptions = function( ) {
       if( typeof saved[ savedKey ] == 'number' )
         options[ savedKey ] = saved[ savedKey ] ;
     }
+    if( Game._EMBED )
+      options.quality = typeof saved.embedQuality == 'number' ? saved.embedQuality : 0 ;
   } catch( err ) {
   }
   return options ;
@@ -431,7 +472,15 @@ Game.prototype.applyQuality = function( ) {
 
 Game.prototype.saveOptions = function( ) {
   try {
-    window.localStorage.setItem( Game._OPTIONS_KEY, JSON.stringify( this.options ) ) ;
+    var toSave = { } ;
+    for( var key in this.options )
+      toSave[ key ] = this.options[ key ] ;
+    if( Game._EMBED ) {
+      var oldSaved = JSON.parse( window.localStorage.getItem( Game._OPTIONS_KEY ) || '{}' ) ;
+      toSave.embedQuality = this.options.quality ;
+      toSave.quality = typeof oldSaved.quality == 'number' ? oldSaved.quality : Game._DEFAULT_OPTIONS.quality ;
+    }
+    window.localStorage.setItem( Game._OPTIONS_KEY, JSON.stringify( toSave ) ) ;
   } catch( err ) {
   }
 } ;
@@ -464,6 +513,8 @@ Game._DEBUG_WORD = 'DEBUG' ;
 
 Game.prototype.handleKeyDown = function( e ) {
   this._checkDebugWord( e ) ;
+  if( this.audioContext && this.audioContext.state == 'suspended' )
+    this.audioContext.resume( ) ;
   this._syncShift( e ) ;
 
   // TODO: temporal
@@ -556,12 +607,14 @@ Game.prototype._runStep = function( ) {
       this.lastStepTime = nowTime ;
       stepsDone = 1 ;
     }
-    while( nowTime - this.lastStepTime >= stepMs && stepsDone < 5 ) {
+    // a slow frame only catches up a little, so one late frame doesn't make the next one late too
+    var maxSteps = gameSpeed > 1 ? 5 : 2 ;
+    while( nowTime - this.lastStepTime >= stepMs && stepsDone < maxSteps ) {
       this._runOneStep( ) ;
       this.lastStepTime += stepMs ;
       stepsDone++ ;
     }
-    if( stepsDone >= 5 )
+    if( stepsDone >= maxSteps )
       this.lastStepTime = nowTime ;
     if( stepsDone > 0 )
       this._drawStep( ) ;
@@ -588,9 +641,11 @@ Game.prototype._runOneStep = function( ) {
 
 
 Game.prototype._drawStep = function( ) {
+  var drawStart = window.performance ? window.performance.now( ) : Date.now( ) ;
   this.states[ this.state ].updateDisplay( this.surface ) ;
   this._displayFade( this.surface ) ;
   this._displayFps( this.surface ) ;
+  this._countFrame( drawStart ) ;
   this._displayOnlineState(this.surface);
 } ;
 
@@ -623,14 +678,34 @@ Game.prototype._calculateFps = function( ) {
 } ;
 
 
+// real frames drawn each second and how long drawing took, for the fps option
+Game.prototype._countFrame = function( drawStart ) {
+  var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+  this.frameCountNow = ( this.frameCountNow || 0 ) + 1 ;
+  this.drawTimeNow = ( this.drawTimeNow || 0 ) + ( nowTime - drawStart ) ;
+  if( ! this.frameCountStart )
+    this.frameCountStart = nowTime ;
+  if( nowTime - this.frameCountStart >= 1000 ) {
+    this.shownFps = Math.round( this.frameCountNow * 1000 / ( nowTime - this.frameCountStart ) ) ;
+    this.shownDrawMs = this.drawTimeNow / this.frameCountNow ;
+    this.frameCountNow = 0 ;
+    this.drawTimeNow = 0 ;
+    this.frameCountStart = nowTime ;
+  }
+} ;
+
+
 Game.prototype._displayFps = function( surface ) {
-  if( ! this.debug || ! this.fps )
+  if( ! this.options.fps && ! this.debug )
+    return ;
+  if( ! this.shownFps )
     return ;
 
   surface.save( ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.font = '16px Arial' ;
-  surface.fillText( this.fps + 'fps', this.getWidth( ) - 50, this.getHeight( ) - 15 ) ;
+  surface.font = '13px Arial' ;
+  surface.textAlign = 'right' ;
+  surface.fillText( this.shownFps + ' fps  ' + this.shownDrawMs.toFixed( 1 ) + ' ms', this.getWidth( ) - 8, this.getHeight( ) - 8 ) ;
   surface.restore( ) ;
 } ;
 
