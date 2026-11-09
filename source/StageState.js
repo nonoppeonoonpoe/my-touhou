@@ -34,6 +34,10 @@ function StageState( game ) {
   this.players = 3 ;
   this.bombs = 2 ;
   this.bombCount = 0 ;
+  this.bombSpan = this._BOMB_SPAN ;
+  this.queuedSounds = { } ;
+  this.lastTimeoutTick = 0 ;
+  this.lastLaserCount = -999 ;
   this.bossSpellCount = 0 ;
   this.pending = 0 ;
   this.bgScale = 1 ;
@@ -452,7 +456,7 @@ StageState.prototype.runStep = function( ) {
         ! this.fighter.isFlagSet( this.fighter._FLAG_UNHITTABLE ) )
       this.clearFlag( this._FLAG_FIGHTER_DEAD ) ;
     if( this.isFlagSet( this._FLAG_BOMB ) &&
-        this.count > this.bombCount + this._BOMB_SPAN ) {
+        this.count > this.bombCount + this.bombSpan ) {
       this.clearFlag( this._FLAG_BOMB ) ;
       this.bombEndCount = this.count ;
     }
@@ -539,11 +543,36 @@ StageState.prototype._updateBGScale = function( ) {
 } ;
 
 
+// sounds that don't have a flag of their own, played once per step
+StageState.prototype._queueSound = function( key ) {
+  this.queuedSounds[ key ] = true ;
+} ;
+
+
+// the boss timer ticks every second once it's down to 10
+StageState.prototype._checkTimeoutTick = function( ) {
+  if( this.oldRules || ! this.isFlagSet( this._FLAG_BOSS_EXIST ) )
+    return ;
+  var boss = this.bossManager.getBoss( ) ;
+  if( ! boss || boss.isVanishingOrEscaping( ) )
+    return ;
+  var secondsLeft = Math.ceil( boss.getTimeLeft( ) ) ;
+  if( secondsLeft > 0 && secondsLeft <= 10 && secondsLeft != this.lastTimeoutTick )
+    this._queueSound( Game._SE_TIMEOUT ) ;
+  this.lastTimeoutTick = secondsLeft ;
+} ;
+
+
 /**
  * TODO: temporal
  */
 StageState.prototype._soundEffectDependsOnFlag = function( ) {
   var game = Game;
+  this._checkTimeoutTick( ) ;
+  for( var soundKey in this.queuedSounds ) {
+    this._soundEffect( Number( soundKey ) ) ;
+  }
+  this.queuedSounds = { } ;
   if( this.isFlagSet( this._FLAG_SE_ENEMY_VANISH ) ) {
     this._soundEffect( game._SE_ENEMY_VANISH ) ;
     this.clearFlag( this._FLAG_SE_ENEMY_VANISH ) ;
@@ -960,6 +989,10 @@ StageState.prototype.reset = function( ) {
   this.players = 3 ;
   this.bombs = 2 ;
   this.bombCount = 0 ;
+  this.bombSpan = this._BOMB_SPAN ;
+  this.queuedSounds = { } ;
+  this.lastTimeoutTick = 0 ;
+  this.lastLaserCount = -999 ;
   this.bossSpellCount = 0 ;
   this.pending = 0 ;
   this.bgScale = 1 ;
@@ -1079,7 +1112,7 @@ StageState.prototype.sendMessageToServer = function(key) {
 
 
 StageState.prototype.notifyFighterGotPowerItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_POWER_ITEM ) ;
   if( this.oldRules ) {
     this.score += 100 ;
     fighter.incrementPower( 1 ) ;
@@ -1102,7 +1135,7 @@ StageState.prototype.notifyFighterGotPowerItem = function( fighter, item ) {
 
 
 StageState.prototype.notifyFighterGotScoreItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_ITEM ) ;
   if( this.oldRules ) {
     this.score += 1000 ;
     return ;
@@ -1129,7 +1162,7 @@ StageState.prototype.getPointItemValue = function( item ) {
 
 
 StageState.prototype.notifyFighterGotStarItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_ITEM ) ;
   if( item.fromBomb )
     this.score += 100 ;
   else
@@ -1141,6 +1174,8 @@ StageState.prototype.notifyFighterFullPower = function( fighter ) {
   if( this.oldRules )
     return ;
   this.enemyBulletManager.cancelIntoStars( fighter ) ;
+  this._queueSound( Game._SE_FULL_POWER ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.showMessage( 'Full Power Mode!!', 'rgb(255, 220, 120)' ) ;
   this.fx.popWords( fighter.getX( ), fighter.getY( ), 'Full Power!', 'rgb(255, 240, 120)' ) ;
 } ;
@@ -1171,7 +1206,7 @@ StageState.prototype._checkExtend = function( ) {
     this.extendIndex++ ;
     if( this.players < this._MAX_STOCK )
       this.players++ ;
-    this.setFlag( this._FLAG_SE_POWERUP ) ;
+    this._queueSound( Game._SE_EXTEND ) ;
     this.showMessage( 'Extend!!', 'rgb(255, 160, 200)' ) ;
     if( this.fighter )
       this.fx.popWords( this.fighter.getX( ), this.fighter.getY( ), '1UP', 'rgb(255, 160, 200)' ) ;
@@ -1200,6 +1235,12 @@ StageState.prototype.notifyFighterDoShot = function( fighter ) {
 
   this.bulletManager.create( fighter ) ;
   this.setFlag( this._FLAG_SE_SHOT ) ;
+  // marisa's illusion laser hums on top of the shot sound
+  if( this.canonMoves && fighter == this.fighter && fighter.characterIndex == fighter._MARISA &&
+      fighter.isFlagSet( fighter._FLAG_SLOW ) && this.count - this.lastLaserCount >= 50 ) {
+    this.lastLaserCount = this.count ;
+    this._queueSound( Game._SE_LASER ) ;
+  }
 } ;
 
 
@@ -1218,8 +1259,17 @@ StageState.prototype.notifyEnemyDidShot = function( enemy, shot ) {
 StageState.prototype.notifyBulletHit = function( bullet, enemy ) {
   this.effectManager.createDamageEffect( enemy ) ;
   this.fx.hitSpark( bullet.getX( ), bullet.getY( ) ) ;
-  this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
+  this._damageSound( enemy ) ;
   this.score += 10 ;
+} ;
+
+
+// a boss low on health makes the sharper hit sound
+StageState.prototype._damageSound = function( target ) {
+  if( ! this.oldRules && target.maxVital > 0 && target.vital < target.maxVital * 0.2 )
+    this._queueSound( Game._SE_BOSS_DAMAGE ) ;
+  else
+    this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
 } ;
 
 
@@ -1251,6 +1301,9 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   if( ! this.debugFlags.bombs )
     this.bombs-- ;
   this.bombCount = this.count ;
+  this.bombSpan = this._BOMB_SPAN ;
+  if( this.canonMoves && fighter.characterIndex == fighter._MARISA )
+    this.bombSpan = Bomb.prototype._SPARK_LIFE ;
   this.bombName = this._BOMB_NAMES[ fighter.characterIndex ] || this._BOMB_NAMES[ 0 ] ;
   this.fx.flash( 0.8 ) ;
   this.fx.shake( 4, 26 ) ;
@@ -1262,6 +1315,19 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   this.spellCardManager.create( fighter ) ;
   this.bombManager.create( fighter ) ;
   this.setFlag( this._FLAG_SE_POWER_EFFECT ) ;
+} ;
+
+
+// the master spark finishes charging and opens up
+StageState.prototype.notifySparkFired = function( spark ) {
+  this.fx.flash( 0.7 ) ;
+  this.fx.shake( 5, 30 ) ;
+  this._queueSound( Game._SE_SPARK ) ;
+} ;
+
+
+StageState.prototype.notifySealBurst = function( ) {
+  this._queueSound( Game._SE_SLASH ) ;
 } ;
 
 
@@ -1302,6 +1368,7 @@ StageState.prototype._endBossPhase = function( boss ) {
   var spellBase = this._SPELL_BASES[ Math.min( this.stageIndex, this._SPELL_BASES.length - 1 ) ] ;
   var spellBonus = spellBase * ( Math.max( 0, Math.floor( boss.getTimeLeft( ) ) ) + 10 ) ;
   this.score += spellBonus ;
+  this._queueSound( Game._SE_CARD_GET ) ;
   this.showMessage( 'Get Spell Card Bonus!!', 'rgb(255, 230, 120)' ) ;
   this.showMessage( String( spellBonus ), 'rgb(255, 230, 120)' ) ;
 } ;
@@ -1314,7 +1381,8 @@ StageState.prototype.notifyBossVanished = function( boss ) {
   this.fx.shake( 6, 36 ) ;
   this.fx.flash( 0.6 ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
-  this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
+  this._queueSound( Game._SE_BOSS_VANISH ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.spellCard = null ;
 
   this.clearFlag( this._FLAG_BOSS_EXIST ) ;
@@ -1538,7 +1606,7 @@ StageState.prototype.bombDamage = function( target, damage, isBoss ) {
     }
   }
   this.effectManager.createDamageEffect( target ) ;
-  this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
+  this._damageSound( target ) ;
   this.score += 10 ;
 } ;
 
@@ -1628,6 +1696,7 @@ StageState.prototype.notifyBossMovedNextStage = function( boss ) {
   this.fx.shake( 3, 14 ) ;
   this.clearFlag( this._FLAG_BOSS_SPELLCARD ) ; // Just in case.
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.spellCard = null ;
   this.notifyDoEffect( boss, 'shockwave', {
     'w': 5,
@@ -1704,12 +1773,30 @@ StageState.prototype.notifyStageClear = function( ) {
   this.state = this._STATE_CLEAR ;
   this.states[ this.state ].init( ) ; // TODO: temporal
   this.messages = [ ] ;
+  this.clearInfo = {
+    stage: this.stageIndex + 1,
+    power: this.fighter.getPower( ),
+    graze: this.graze,
+    points: this.pointItems,
+    last: this.stageIndex >= this.params.length - 1,
+    players: this.players,
+    bombs: this.bombs
+  } ;
   if( ! this.oldRules ) {
     this.clearBonus = this._getClearBonus( ) ;
     this.score += this.clearBonus ;
     this._saveHiScore( ) ;
   }
   this.viewScore = this.score ;
+} ;
+
+
+// how far the player has flown up during the clear screen, only for looks
+StageState.prototype.getClearLift = function( ) {
+  if( this.state != this._STATE_CLEAR || this.viewFromFighter )
+    return 0 ;
+  var liftTime = __clamp01( this.states[ this._STATE_CLEAR ].count / 45 ) ;
+  return 560 * liftTime * liftTime ;
 } ;
 
 
@@ -1770,7 +1857,7 @@ StageState.prototype._displayMessages = function( surface ) {
 
 // the hitbox shows while focused: a white dot in a slowly spinning ring
 StageState.prototype._displayHitbox = function( surface ) {
-  if( this.viewFromFighter )
+  if( this.viewFromFighter || this.state == this._STATE_CLEAR )
     return ;
   surface.save( ) ;
   for( var i = 0; i < this.fighterManager.elements.length; i++ ) {
@@ -1832,7 +1919,7 @@ StageState.prototype._displayBombName = function( surface ) {
     return ;
   var bombAge = this.count - this.bombCount ;
   var slide = Math.min( 1, bombAge / 15 ) ;
-  var fade = Math.min( 1, ( this._BOMB_SPAN - bombAge ) / 20 ) ;
+  var fade = Math.min( 1, ( this.bombSpan - bombAge ) / 20 ) ;
   surface.save( ) ;
   surface.globalAlpha = Math.max( 0, fade ) ;
   var bannerX = -260 + 270 * slide ;
@@ -1895,7 +1982,7 @@ StageState.prototype._handlePauseKey = function( e ) {
     this.pauseIndex = 0 ;
     this.pausePage = 'main' ;
     this.game.pauseBGM( true ) ;
-    this._soundEffect( Game._SE_SELECT ) ;
+    this._soundEffect( Game._SE_PAUSE ) ;
     return true ;
   }
 
@@ -1916,6 +2003,7 @@ StageState.prototype._handlePauseKey = function( e ) {
       this._resume( ) ;
       break ;
     case 88: // x
+      this._soundEffect( Game._SE_CANCEL ) ;
       if( this.pausePage == 'debug' ) {
         this.pausePage = 'main' ;
         this.pauseIndex = 0 ;
@@ -1924,7 +2012,7 @@ StageState.prototype._handlePauseKey = function( e ) {
       }
       break ;
     case 90: // z
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       pauseItems[ this.pauseIndex ].act.call( this ) ;
       break ;
   }
@@ -2780,6 +2868,8 @@ ClearState.prototype.init = function( ) {
  */
 ClearState.prototype.runStep = function( ) {
   this.count++ ;
+  if( this.count == 40 && ! this.stage.oldRules )
+    this._soundEffect( Game._SE_BONUS ) ;
 } ;
 
 
@@ -2807,73 +2897,105 @@ ClearState.prototype.handleKeyUp = function( e ) {
 
 
 /*
- * the summary: the backdrop wipes up, the panel pops in, then each row
- * slides in and its number counts up. the z gate still uses _MOVE_SPEED
+ * the summary is drawn right over the field like the old games: no backdrop,
+ * the rows fade in one by one while the player flies off the top
  */
+ClearState._LABEL_COLOR = 'rgb( 225, 235, 255 )' ;
+ClearState._POINT_COLOR = 'rgb( 255, 170, 200 )' ;
+ClearState._LIFE_COLOR = 'rgb( 255, 235, 120 )' ;
+
+ClearState.prototype._getRows = function( ) {
+  var info = this.stage.clearInfo ;
+  var rows = [ ] ;
+  if( this.stage.oldRules || ! info )
+    return rows ;
+  rows.push( [ 'Stage', '* 1000', '= ' + info.stage * 1000, ClearState._LABEL_COLOR ] ) ;
+  rows.push( [ 'Power', '* 100', '= ' + info.power * 100, ClearState._LABEL_COLOR ] ) ;
+  rows.push( [ 'Graze', '* 10', '= ' + info.graze * 10, ClearState._LABEL_COLOR ] ) ;
+  rows.push( [ '* Point Item', '', '' + info.points, ClearState._POINT_COLOR ] ) ;
+  if( info.last ) {
+    rows.push( [ 'Player', '* 3000000', '= ' + info.players * 3000000, ClearState._LIFE_COLOR ] ) ;
+    rows.push( [ 'Bomb', '* 1000000', '= ' + info.bombs * 1000000, ClearState._LIFE_COLOR ] ) ;
+  }
+  rows.push( null ) ;
+  rows.push( [ 'Total', '', '= ' + this.stage.clearBonus, 'rgb( 255, 255, 255 )' ] ) ;
+  return rows ;
+} ;
+
+
+// canvas letterSpacing isn't everywhere, so the wide look is drawn one letter at a time
+ClearState.prototype._spacedText = function( surface, text, x, y, align ) {
+  var gap = 3 ;
+  var fullWidth = 0 ;
+  for( var i = 0; i < text.length; i++ )
+    fullWidth += surface.measureText( text.charAt( i ) ).width + gap ;
+  fullWidth -= gap ;
+  var letterX = x ;
+  if( align == 'right' )
+    letterX = x - fullWidth ;
+  else if( align == 'center' )
+    letterX = x - fullWidth / 2 ;
+  surface.textAlign = 'left' ;
+  for( var j = 0; j < text.length; j++ ) {
+    var letter = text.charAt( j ) ;
+    surface.strokeText( letter, letterX, y ) ;
+    surface.fillText( letter, letterX, y ) ;
+    letterX += surface.measureText( letter ).width + gap ;
+  }
+  return fullWidth ;
+} ;
+
+
 ClearState.prototype.updateDisplay = function( surface ) {
-  var width = this.stage.getWidth( ) ;
-  var height = this.stage.getHeight( ) ;
-  var wipeSpan = height / ClearState._MOVE_SPEED ;
-  var base = height * ( 1 - __easeInOut( this.count / wipeSpan ) ) ;
+  var titleTime = __animTime( this.count, 20, 24 ) ;
+  if( titleTime <= 0 )
+    return ;
 
   surface.save( ) ;
-  var pattern = surface.createPattern( this.getImage( Game._IMG_SCORE_BACK ), '' ) ;
-  surface.fillStyle = pattern ;
-  surface.fillRect( 0, base, width, height ) ;
+  surface.lineJoin = 'round' ;
+  surface.lineWidth = 3 ;
+  surface.strokeStyle = 'rgba( 0, 0, 0, 0.85 )' ;
 
-  var panelTime = __animTime( this.count, wipeSpan * 0.6, 16 ) ;
-  if( panelTime <= 0 ) {
-    surface.restore( ) ;
-    return ;
-  }
-  var panelScale = 0.9 + 0.1 * __easeBack( panelTime ) ;
-  surface.translate( 240, 240 ) ;
-  surface.scale( panelScale, panelScale ) ;
-  surface.translate( -240, -240 ) ;
-  surface.fillStyle = 'rgb( 30, 30, 30 )' ;
-  surface.globalAlpha = 0.8 * __easeOut( panelTime ) ;
-  surface.fillRect( 50, 50, 380, 380 ) ;
-
-  var rowStart = wipeSpan * 0.6 + 12 ;
-  var titleTime = __animTime( this.count, rowStart, 18 ) ;
+  var info = this.stage.clearInfo ;
+  var title = ( info && info.last ) ? 'All Clear!' : 'Stage ' + ( this.stage.stageIndex + 1 ) + ' Clear!' ;
   surface.globalAlpha = __easeOut( titleTime ) ;
-  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.textAlign = 'center' ;
-  surface.font = 'bold 26px Arial' ;
-  surface.fillText( 'Stage ' + ( this.stage.stageIndex + 1 ) + ' Clear', 240, 110 - 16 * ( 1 - __easeBack( titleTime ) ) ) ;
+  surface.font = 'italic bold 30px Georgia, serif' ;
+  surface.fillStyle = 'rgb( 255, 230, 90 )' ;
+  var titleWidth = this._spacedText( surface, title, 240, 100, 'center' ) ;
   surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-  var lineWidth = 220 * __easeOut( __animTime( this.count, rowStart + 8, 20 ) ) ;
-  surface.fillRect( 240 - lineWidth / 2, 124, lineWidth, 2 ) ;
+  var lineWidth = ( titleWidth + 20 ) * __easeOut( __animTime( this.count, 32, 20 ) ) ;
+  surface.fillRect( 240 - lineWidth / 2, 112, lineWidth, 2 ) ;
 
-  var rows = [ ] ;
-  if( ! this.stage.oldRules ) {
-    rows.push( [ 'Point items', this.stage.pointItems ] ) ;
-    rows.push( [ 'Graze', this.stage.graze ] ) ;
-    rows.push( [ 'Clear bonus', this.stage.clearBonus ] ) ;
-  }
-  surface.font = '18px Arial' ;
+  var rows = this._getRows( ) ;
+  var rowY = 160 ;
+  var rowIndex = 0 ;
+  surface.font = 'bold 19px Arial, sans-serif' ;
   for( var i = 0; i < rows.length; i++ ) {
-    var rowTime = __animTime( this.count, rowStart + 16 + i * 10, 16 ) ;
-    if( rowTime <= 0 )
+    var row = rows[ i ] ;
+    if( ! row ) {
+      rowY += 16 ;
       continue ;
-    var countTime = __easeOut( __animTime( this.count, rowStart + 20 + i * 10, 40 ) ) ;
-    var rowX = -40 * ( 1 - __easeOut( rowTime ) ) ;
-    var rowY = 175 + i * 40 + ( i == rows.length - 1 ? 15 : 0 ) ;
-    surface.globalAlpha = __easeOut( rowTime ) ;
-    surface.fillStyle = i == rows.length - 1 ? 'rgb( 255, 220, 140 )' : 'rgb( 230, 230, 230 )' ;
-    surface.textAlign = 'left' ;
-    surface.fillText( rows[ i ][ 0 ], 100 + rowX, rowY ) ;
-    surface.textAlign = 'right' ;
-    surface.fillText( Math.floor( rows[ i ][ 1 ] * countTime ), 380 + rowX, rowY ) ;
+    }
+    var rowTime = __animTime( this.count, 40 + rowIndex * 10, 20 ) ;
+    rowIndex++ ;
+    if( rowTime > 0 ) {
+      surface.globalAlpha = __easeOut( rowTime ) ;
+      surface.fillStyle = row[ 3 ] ;
+      this._spacedText( surface, row[ 0 ], 56, rowY, 'left' ) ;
+      if( row[ 1 ] )
+        this._spacedText( surface, row[ 1 ], 200, rowY, 'left' ) ;
+      this._spacedText( surface, row[ 2 ], 428, rowY, 'right' ) ;
+    }
+    rowY += 34 ;
   }
 
-  var hintTime = __animTime( this.count, rowStart + 70, 20 ) ;
+  var hintTime = __animTime( this.count, 50 + rowIndex * 10, 20 ) ;
   if( hintTime > 0 ) {
     surface.globalAlpha = hintTime * ( 0.55 + 0.45 * Math.sin( this.count / 10 ) ) ;
     surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-    surface.textAlign = 'center' ;
-    surface.font = '14px Arial' ;
-    surface.fillText( 'Press Z to go on', 240, 400 ) ;
+    surface.font = '14px Arial, sans-serif' ;
+    surface.lineWidth = 2 ;
+    this._spacedText( surface, 'Press Z to go on', 240, 440, 'center' ) ;
   }
   surface.restore( ) ;
 } ;
@@ -2932,7 +3054,7 @@ GameOverState.prototype.handleKeyDown = function( e ) {
       this.index = ( this.index == 0 ) ? 1 : 0 ;
       break ;
     case 90: // z
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       if( this.index == 0 )
         this.stage.notifyContinue( ) ;
       else

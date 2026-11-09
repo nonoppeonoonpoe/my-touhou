@@ -417,6 +417,18 @@ StageFx.prototype._drawDarkness = function( surface ) {
 } ;
 
 
+// bits of light pulled in toward the mini-hakkero while the spark charges
+StageFx.prototype._addChargeBits = function( x, y, radius ) {
+  for( var i = 0; i < 3; i++ ) {
+    var angle = Math.random( ) * Math.PI * 2 ;
+    var bitLife = 14 ;
+    this._add( { 'kind': 'spark', 'x': x + Math.cos( angle ) * radius, 'y': y + Math.sin( angle ) * radius,
+                 'vx': -Math.cos( angle ) * radius / 8.5, 'vy': -Math.sin( angle ) * radius / 8.5,
+                 'life': bitLife, 'color': 'hsl(' + Math.floor( Math.random( ) * 360 ) + ', 100%, 80%)', 'size': 2 } ) ;
+  }
+} ;
+
+
 // the master spark beam, drawn here because it's way too big for the bullet images
 StageFx.prototype._drawSparks = function( surface ) {
   var bombManager = this.stage.bombManager ;
@@ -427,13 +439,44 @@ StageFx.prototype._drawSparks = function( surface ) {
     if( spark.kind != 'spark' || spark.isDead( ) )
       continue ;
     var sparkAge = spark.count ;
-    var grow = Math.min( 1, sparkAge / 10 ) ;
-    var fadeOut = Math.min( 1, ( spark._LIFE - sparkAge ) / 15 ) ;
-    var fieldWidth = this.stage.getWidth( ) ;
-    var wobble = 0.92 + Math.sin( sparkAge * 0.9 ) * 0.08 ;
-    var halfWidth = ( spark._SPARK_HALF_WIDTH + 6 ) * grow * wobble ;
     var beamBottom = spark.getY( ) - 14 ;
     var beamX = spark.getX( ) ;
+    var chargeEnd = spark._SPARK_CHARGE ;
+    var closeStart = chargeEnd + spark._SPARK_FIRE ;
+    var chargeTime = Math.min( 1, sparkAge / chargeEnd ) ;
+
+    // charging: light gathers into the mini-hakkero and a thin beam starts to leak out
+    if( sparkAge < chargeEnd + 6 ) {
+      if( sparkAge < chargeEnd && sparkAge % 2 == 0 )
+        this._addChargeBits( beamX, beamBottom, 60 + 40 * ( 1 - chargeTime ) ) ;
+      var chargeGlow = 10 + 34 * __easeOut( chargeTime ) + Math.sin( sparkAge * 1.3 ) * 3 ;
+      var chargeBall = surface.createRadialGradient( beamX, beamBottom, 1, beamX, beamBottom, chargeGlow ) ;
+      chargeBall.addColorStop( 0, 'rgba(255, 255, 255, 1)' ) ;
+      chargeBall.addColorStop( 0.4, 'hsla(' + ( ( sparkAge * 9 ) % 360 ) + ', 100%, 75%, 0.8)' ) ;
+      chargeBall.addColorStop( 1, 'rgba(255, 255, 255, 0)' ) ;
+      surface.globalAlpha = 1 ;
+      surface.fillStyle = chargeBall ;
+      surface.beginPath( ) ;
+      surface.arc( beamX, beamBottom, chargeGlow, 0, Math.PI * 2 ) ;
+      surface.fill( ) ;
+      var leakTime = __clamp01( ( sparkAge - chargeEnd * 0.4 ) / ( chargeEnd * 0.6 ) ) ;
+      if( leakTime > 0 && sparkAge < chargeEnd ) {
+        var leakWidth = 2 + 6 * leakTime + Math.sin( sparkAge * 2.1 ) * 1.5 ;
+        surface.globalAlpha = 0.5 + 0.5 * leakTime ;
+        surface.fillStyle = 'rgba(255, 255, 240, 0.9)' ;
+        surface.fillRect( beamX - leakWidth / 2, 0, leakWidth, beamBottom ) ;
+      }
+      if( sparkAge < chargeEnd )
+        continue ;
+    }
+
+    var openTime = __easeOut( __clamp01( ( sparkAge - chargeEnd ) / 18 ) ) ;
+    var closeTime = __clamp01( ( sparkAge - closeStart ) / spark._SPARK_CLOSE ) ;
+    var grow = openTime * ( 1 - __easeInOut( closeTime ) ) ;
+    var fadeOut = 1 - closeTime * closeTime ;
+    var fieldWidth = this.stage.getWidth( ) ;
+    var wobble = 0.92 + Math.sin( sparkAge * 0.9 ) * 0.08 ;
+    var halfWidth = ( spark._SPARK_HALF_WIDTH + 6 ) * Math.max( 0.15, grow ) * wobble ;
 
     // it leaves the mini-hakkero narrow and opens up to the whole screen
     var leftEdge = beamX - ( beamX + 20 ) * grow ;
@@ -470,7 +513,7 @@ StageFx.prototype._drawSparks = function( surface ) {
     surface.arc( beamX, beamBottom, halfWidth * 0.9, 0, Math.PI * 2 ) ;
     surface.fill( ) ;
 
-    if( sparkAge % 3 == 0 )
+    if( sparkAge % 3 == 0 && closeTime < 0.6 )
       this._addSparks( leftEdge + Math.random( ) * ( rightEdge - leftEdge ), Math.random( ) * spreadTop, 3, 4, 18, 'rgb(255, 255, 210)', 2 ) ;
   }
   surface.globalAlpha = 1 ;

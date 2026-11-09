@@ -154,7 +154,7 @@ PostReplayState.prototype.handleKeyDown = function( e ) {
         this.index = 0 ;
       break ;
     case 90: // z
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       if( this.index == 0 )
         this._postReplay( ) ;
       else

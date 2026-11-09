@@ -104,6 +104,22 @@ Game._SE_ENEMY_DAMAGE = 5 ;
 Game._SE_GRAZE        = 6 ;
 Game._SE_POWERUP      = 7 ;
 Game._SE_POWER_EFFECT = 8 ;
+Game._SE_OK           = 9 ;
+Game._SE_CANCEL       = 10 ;
+Game._SE_PAUSE        = 11 ;
+Game._SE_BOSS_DAMAGE  = 12 ;
+Game._SE_BOSS_VANISH  = 13 ;
+Game._SE_EXTEND       = 14 ;
+Game._SE_ITEM         = 15 ;
+Game._SE_POWER_ITEM   = 16 ;
+Game._SE_FULL_POWER   = 17 ;
+Game._SE_KIRA         = 18 ;
+Game._SE_CARD_GET     = 19 ;
+Game._SE_TIMEOUT      = 20 ;
+Game._SE_BONUS        = 21 ;
+Game._SE_LASER        = 22 ;
+Game._SE_SPARK        = 23 ;
+Game._SE_SLASH        = 24 ;
 
 Game._IMG_FIGHTER         =  0;
 Game._IMG_REIMU_SHIP      =  1;
@@ -221,15 +237,31 @@ Game._BGMS[ Game._BGM_1 ]      = 'BGM/bgm.mp3' ;
 Game._BGMS[ Game._BGM_ENDING ] = 'BGM/ending.mp3' ;
 
 Game._SES = { } ;
-Game._SES[ Game._SE_SELECT ]       = 'SE/select.wav' ;
-Game._SES[ Game._SE_DEAD ]         = 'SE/dead.wav' ;
-Game._SES[ Game._SE_SHOT ]         = 'SE/shot.wav' ;
-Game._SES[ Game._SE_ENEMY_SHOT ]   = 'SE/shot.wav' ;
-Game._SES[ Game._SE_ENEMY_VANISH ] = 'SE/enemy_vanish.wav' ;
-Game._SES[ Game._SE_ENEMY_DAMAGE ] = 'SE/enemy_damage.wav' ;
-Game._SES[ Game._SE_GRAZE ]        = 'SE/graze.wav' ;
-Game._SES[ Game._SE_POWERUP ]      = 'SE/powerup.wav' ;
-Game._SES[ Game._SE_POWER_EFFECT ] = 'SE/enemy_powereffect.wav' ;
+Game._SES[ Game._SE_SELECT ]        = 'SE/se_select00.wav' ;
+Game._SES[ Game._SE_DEAD ]          = 'SE/se_pldead00.wav' ;
+Game._SES[ Game._SE_SHOT ]          = 'SE/se_plst00.wav' ;
+Game._SES[ Game._SE_ENEMY_SHOT ]    = 'SE/se_tan00.wav' ;
+Game._SES[ Game._SE_ENEMY_VANISH ]  = 'SE/se_enep00.wav' ;
+Game._SES[ Game._SE_ENEMY_DAMAGE ]  = 'SE/se_damage00.wav' ;
+Game._SES[ Game._SE_GRAZE ]         = 'SE/se_graze.wav' ;
+Game._SES[ Game._SE_POWERUP ]       = 'SE/se_powerup.wav' ;
+Game._SES[ Game._SE_POWER_EFFECT ]  = 'SE/se_cat00.wav' ;
+Game._SES[ Game._SE_OK ]            = 'SE/se_ok00.wav' ;
+Game._SES[ Game._SE_CANCEL ]        = 'SE/se_cancel00.wav' ;
+Game._SES[ Game._SE_PAUSE ]         = 'SE/se_pause.wav' ;
+Game._SES[ Game._SE_BOSS_DAMAGE ]   = 'SE/se_damage01.wav' ;
+Game._SES[ Game._SE_BOSS_VANISH ]   = 'SE/se_enep01.wav' ;
+Game._SES[ Game._SE_EXTEND ]        = 'SE/se_extend.wav' ;
+Game._SES[ Game._SE_ITEM ]          = 'SE/se_item00.wav' ;
+Game._SES[ Game._SE_POWER_ITEM ]    = 'SE/se_power1.wav' ;
+Game._SES[ Game._SE_FULL_POWER ]    = 'SE/se_power0.wav' ;
+Game._SES[ Game._SE_KIRA ]          = 'SE/se_kira00.wav' ;
+Game._SES[ Game._SE_CARD_GET ]      = 'SE/se_cardget.wav' ;
+Game._SES[ Game._SE_TIMEOUT ]       = 'SE/se_timeout.wav' ;
+Game._SES[ Game._SE_BONUS ]         = 'SE/se_bonus.wav' ;
+Game._SES[ Game._SE_LASER ]         = 'SE/se_lazer00.wav' ;
+Game._SES[ Game._SE_SPARK ]         = 'SE/se_nep00.wav' ;
+Game._SES[ Game._SE_SLASH ]         = 'SE/se_slash.wav' ;
 
 
 Game._SOMEONE_MESSAGES = [];
@@ -260,44 +292,40 @@ Game.prototype.getImage = function( key ) {
 } ;
 
 
-/**
- * TODO: temporal
- */
-Game.prototype.soundEffect = function(key) {
-  var game = Game;
-  switch(key) {
-    case game._SE_SHOT:
-      this.sounds[key].volume = 0.012;
-      break;
-    case game._SE_SELECT:
-      this.sounds[key].volume = 0.04;
-      break;
-    case game._SE_POWER_EFFECT:
-      this.sounds[key].volume = 0.14;
-      break;
-    case game._SE_ENEMY_SHOT:
-      this.sounds[key].volume = 0.02;
-      break;
-    case game._SE_ENEMY_DAMAGE:
-      this.sounds[key].volume = 0.014;
-      break;
-    case game._SE_ENEMY_VANISH:
-      this.sounds[key].volume = 0.03;
-      break;
-    case game._SE_DEAD:
-      this.sounds[key].volume = 0.05;
-      break;
-    case game._SE_POWERUP:
-      this.sounds[key].volume = 0.04;
-      break;
-    case game._SE_GRAZE:
-      this.sounds[key].volume = 0.05;
-      break;
-    default:
-      this.sounds[key].volume = 0.1;
-      break;
-  }
+// base volume for each sound, then scaled by the sound option
+Game._SE_VOLUMES = { } ;
+Game._SE_VOLUMES[ Game._SE_SELECT ]        = 0.015 ;
+Game._SE_VOLUMES[ Game._SE_DEAD ]          = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_SHOT ]          = 0.01 ;
+Game._SE_VOLUMES[ Game._SE_ENEMY_SHOT ]    = 0.006 ;
+Game._SE_VOLUMES[ Game._SE_ENEMY_VANISH ]  = 0.012 ;
+Game._SE_VOLUMES[ Game._SE_ENEMY_DAMAGE ]  = 0.016 ;
+Game._SE_VOLUMES[ Game._SE_GRAZE ]         = 0.022 ;
+Game._SE_VOLUMES[ Game._SE_POWERUP ]       = 0.02 ;
+Game._SE_VOLUMES[ Game._SE_POWER_EFFECT ]  = 0.1 ;
+Game._SE_VOLUMES[ Game._SE_OK ]            = 0.04 ;
+Game._SE_VOLUMES[ Game._SE_CANCEL ]        = 0.02 ;
+Game._SE_VOLUMES[ Game._SE_PAUSE ]         = 0.04 ;
+Game._SE_VOLUMES[ Game._SE_BOSS_DAMAGE ]   = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_BOSS_VANISH ]   = 0.02 ;
+Game._SE_VOLUMES[ Game._SE_EXTEND ]        = 0.04 ;
+Game._SE_VOLUMES[ Game._SE_ITEM ]          = 0.02 ;
+Game._SE_VOLUMES[ Game._SE_POWER_ITEM ]    = 0.012 ;
+Game._SE_VOLUMES[ Game._SE_FULL_POWER ]    = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_KIRA ]          = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_CARD_GET ]      = 0.05 ;
+Game._SE_VOLUMES[ Game._SE_TIMEOUT ]       = 0.04 ;
+Game._SE_VOLUMES[ Game._SE_BONUS ]         = 0.04 ;
+Game._SE_VOLUMES[ Game._SE_LASER ]         = 0.012 ;
+Game._SE_VOLUMES[ Game._SE_SPARK ]         = 0.05 ;
+Game._SE_VOLUMES[ Game._SE_SLASH ]         = 0.03 ;
 
+
+Game.prototype.soundEffect = function(key) {
+  if( ! this.sounds[ key ] )
+    return ;
+  var baseVolume = Game._SE_VOLUMES[ key ] ;
+  this.sounds[ key ].volume = baseVolume === void 0 ? 0.1 : baseVolume ;
   this.sounds[ key ].volume = Math.min( 1, this.sounds[ key ].volume * this.options.sound / 5 ) ;
   this.sounds[ key ].pause();
   this.sounds[ key ].currentTime = 0;
