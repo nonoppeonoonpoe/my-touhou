@@ -66,6 +66,18 @@ StageFx.prototype.scorePopup = function( x, y, value, isMax ) {
 } ;
 
 
+// colors of the fantasy seal orbs, same order as the bomb image
+StageFx.prototype._SEAL_COLORS = [ 'rgb(255, 255, 255)', 'rgb(255, 120, 120)', 'rgb(255, 130, 230)', 'rgb(180, 140, 255)',
+                                   'rgb(130, 230, 255)', 'rgb(140, 255, 150)', 'rgb(255, 250, 130)', 'rgb(255, 180, 110)' ] ;
+
+StageFx.prototype.sealBurst = function( x, y, colorNum ) {
+  var sealColor = this._SEAL_COLORS[ colorNum % this._SEAL_COLORS.length ] ;
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 10, 'to': 80, 'life': 30, 'color': sealColor, 'width': 6 } ) ;
+  this._addSparks( x, y, 16, 5, 30, sealColor, 3 ) ;
+  this.flash( 0.15 ) ;
+} ;
+
+
 StageFx.prototype.flash = function( strength ) {
   this.flashAlpha = Math.max( this.flashAlpha, strength ) ;
 } ;
@@ -104,6 +116,8 @@ StageFx.prototype.draw = function( surface ) {
 
   // positions only line up with the normal top down view
   if( ! this.stage.viewFromFighter ) {
+    this._drawDarkness( surface ) ;
+    this._drawSparks( surface ) ;
     for( var i = 0; i < this.parts.length; i++ )
       this._drawPart( surface, this.parts[ i ] ) ;
   }
@@ -152,4 +166,73 @@ StageFx.prototype._drawPart = function( surface, part ) {
     surface.fillStyle = part.color ;
     surface.fillText( part.text, part.x, part.y ) ;
   }
+} ;
+
+
+// rumia hides inside a ball of darkness, bigger during some of her attacks
+StageFx.prototype._drawDarkness = function( surface ) {
+  var bossManager = this.stage.bossManager ;
+  if( ! bossManager || ! bossManager.existBoss( ) )
+    return ;
+  var darkBoss = bossManager.getBoss( ) ;
+  if( ! darkBoss.effects || ! darkBoss.effects.darkness || darkBoss.isVanishingOrEscaping( ) )
+    return ;
+  var darkRadius = darkBoss.effects.darkness ;
+  // it wobbles a little so it looks alive
+  darkRadius = darkRadius + Math.sin( darkBoss.count / 9 ) * darkRadius * 0.06 ;
+  var darkGlow = surface.createRadialGradient( darkBoss.getX( ), darkBoss.getY( ), darkRadius * 0.15,
+                                               darkBoss.getX( ), darkBoss.getY( ), darkRadius ) ;
+  darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
+  darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
+  darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
+  surface.globalAlpha = 1 ;
+  surface.fillStyle = darkGlow ;
+  surface.beginPath( ) ;
+  surface.arc( darkBoss.getX( ), darkBoss.getY( ), darkRadius, 0, Math.PI * 2 ) ;
+  surface.fill( ) ;
+} ;
+
+
+// the master spark beam, drawn here because it's way too big for the bullet images
+StageFx.prototype._drawSparks = function( surface ) {
+  var bombManager = this.stage.bombManager ;
+  if( ! bombManager )
+    return ;
+  for( var i = 0; i < bombManager.elements.length; i++ ) {
+    var spark = bombManager.elements[ i ] ;
+    if( spark.kind != 'spark' || spark.isDead( ) )
+      continue ;
+    var sparkAge = spark.count ;
+    var grow = Math.min( 1, sparkAge / 10 ) ;
+    var fadeOut = Math.min( 1, ( spark._LIFE - sparkAge ) / 15 ) ;
+    var halfWidth = ( spark._SPARK_HALF_WIDTH + 6 ) * grow * ( 0.92 + Math.sin( sparkAge * 0.9 ) * 0.08 ) ;
+    var beamBottom = spark.getY( ) - 14 ;
+    var beamX = spark.getX( ) ;
+
+    var beamColors = surface.createLinearGradient( beamX - halfWidth, 0, beamX + halfWidth, 0 ) ;
+    var hueShift = ( sparkAge * 7 ) % 360 ;
+    beamColors.addColorStop( 0, 'hsla(' + hueShift + ', 100%, 60%, 0)' ) ;
+    beamColors.addColorStop( 0.18, 'hsla(' + ( ( hueShift + 60 ) % 360 ) + ', 100%, 65%, 0.7)' ) ;
+    beamColors.addColorStop( 0.38, 'rgba(255, 255, 255, 0.95)' ) ;
+    beamColors.addColorStop( 0.62, 'rgba(255, 255, 255, 0.95)' ) ;
+    beamColors.addColorStop( 0.82, 'hsla(' + ( ( hueShift + 180 ) % 360 ) + ', 100%, 65%, 0.7)' ) ;
+    beamColors.addColorStop( 1, 'hsla(' + ( ( hueShift + 240 ) % 360 ) + ', 100%, 60%, 0)' ) ;
+
+    surface.globalAlpha = fadeOut ;
+    surface.fillStyle = beamColors ;
+    surface.fillRect( beamX - halfWidth, 0, halfWidth * 2, beamBottom ) ;
+
+    // the glowing ball at the mini-hakkero
+    var hakkeroGlow = surface.createRadialGradient( beamX, beamBottom, 2, beamX, beamBottom, halfWidth * 0.9 ) ;
+    hakkeroGlow.addColorStop( 0, 'rgba(255, 255, 255, 1)' ) ;
+    hakkeroGlow.addColorStop( 1, 'rgba(255, 255, 255, 0)' ) ;
+    surface.fillStyle = hakkeroGlow ;
+    surface.beginPath( ) ;
+    surface.arc( beamX, beamBottom, halfWidth * 0.9, 0, Math.PI * 2 ) ;
+    surface.fill( ) ;
+
+    if( sparkAge % 3 == 0 )
+      this._addSparks( beamX, beamBottom - Math.random( ) * beamBottom, 2, 4, 18, 'rgb(255, 255, 210)', 2 ) ;
+  }
+  surface.globalAlpha = 1 ;
 } ;

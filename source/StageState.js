@@ -205,6 +205,12 @@ StageState.prototype.init = function( params ) {
    */
   this.oldRules = params.autoplay && ! params.autoplayParams.eosd ? true : false ;
   this.fighter.oldMovement = this.oldRules ;
+
+  // shots, bombs and stage 1-2 enemies that act like the real characters
+  this.canonMoves = ! this.oldRules ;
+  for( var fighterNum = 0; fighterNum < this.fighterManager.elements.length; fighterNum++ )
+    this.fighterManager.elements[ fighterNum ].canonMoves = this.canonMoves ;
+  __useCanonStages( this.canonMoves ) ;
   this.startParams = params ;
   // saved replays bring the lives and bombs they were played with
   this.replayStart = params.autoplay && params.autoplayParams.eosd ? params.autoplayParams : null ;
@@ -1100,6 +1106,8 @@ StageState.prototype.notifyFighterFullPower = function( fighter ) {
 StageState.prototype._checkCollectLine = function( ) {
   if( this.oldRules )
     return ;
+  if( this.canonMoves )
+    this._pullItemsToMarisa( ) ;
   for( var i = 0; i < this.fighterManager.elements.length; i++ ) {
     var lineFighter = this.fighterManager.elements[ i ] ;
     if( lineFighter.isFullPower( ) && ! lineFighter.isHitPending( ) &&
@@ -1198,7 +1206,8 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   this.bombName = this._BOMB_NAMES[ fighter.characterIndex ] || this._BOMB_NAMES[ 0 ] ;
   this.fx.flash( 0.8 ) ;
   this.setFlag( this._FLAG_BOMB ) ;
-  this.enemyManager.bomb( fighter ) ;
+  if( ! this.canonMoves )
+    this.enemyManager.bomb( fighter ) ;
   this.enemyBulletManager.bomb( fighter ) ;
   this.itemManager.beHomingAll( fighter ) ;
   this.spellCardManager.create( fighter ) ;
@@ -1433,6 +1442,49 @@ StageState.prototype._endPractice = function( ) {
 StageState.prototype.notifyBossStageChanged = function( boss ) {
 //  this.enemyBulletManager.removeBulletsOfEnemy( boss ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
+} ;
+
+
+// marisa grabs items from further away than reimu
+StageState.prototype._MARISA_PULL_RANGE = 56 ;
+
+StageState.prototype._pullItemsToMarisa = function( ) {
+  for( var i = 0; i < this.fighterManager.elements.length; i++ ) {
+    var pullFighter = this.fighterManager.elements[ i ] ;
+    if( pullFighter.characterIndex != pullFighter._MARISA || pullFighter.isHitPending( ) )
+      continue ;
+    var items = this.itemManager.elements ;
+    for( var j = 0; j < items.length; j++ ) {
+      var pullItem = items[ j ] ;
+      if( pullItem.isDead( ) || pullItem.isHoming( ) )
+        continue ;
+      var pullDx = pullItem.getX( ) - pullFighter.getX( ) ;
+      var pullDy = pullItem.getY( ) - pullFighter.getY( ) ;
+      if( pullDx * pullDx + pullDy * pullDy < this._MARISA_PULL_RANGE * this._MARISA_PULL_RANGE )
+        pullItem.setTarget( pullFighter ) ;
+    }
+  }
+} ;
+
+
+// a bomb hitting an enemy or the boss, same as a shot but with no bullet
+StageState.prototype.bombDamage = function( target, damage, isBoss ) {
+  if( isBoss ) {
+    if( target.isFlagSet( target._FLAG_UNHITTABLE ) || target.isVanishingOrEscaping( ) )
+      return ;
+    target.vital -= damage ;
+  } else {
+    if( target.isDead( ) )
+      return ;
+    target.vital -= damage ;
+    if( target.vital <= 0 ) {
+      this.notifyEnemyVanished( null, target ) ;
+      target.die( ) ;
+    }
+  }
+  this.effectManager.createDamageEffect( target ) ;
+  this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
+  this.score += 10 ;
 } ;
 
 

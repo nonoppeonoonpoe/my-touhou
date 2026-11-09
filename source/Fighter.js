@@ -292,6 +292,11 @@ Fighter.prototype.move = function( ) {
   if( this.isFlagSet( this._FLAG_MOVE_DOWN ) )
     moveY += 1 ;
 
+  // marisa can only crawl while the master spark is firing
+  if( this.canonMoves && this.characterIndex == this._MARISA &&
+      this.gameState.isFlagSet( this.gameState._FLAG_BOMB ) )
+    d = d * 0.4 ;
+
   // diagonals go the same speed as straight lines
   if( moveX != 0 && moveY != 0 && ! this.oldMovement )
     d = d * 0.70710678 ;

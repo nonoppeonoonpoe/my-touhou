@@ -37,13 +37,14 @@ BulletManager.prototype.reset = function() {
  * TODO: temporal. to make the logic straightforward.
  */
 BulletManager.prototype.create = function( fighter ) {
-  var params = this.params[ fighter.characterIndex ][ fighter.getBulletIndex( ) ][ fighter.getPowerLevel( ) ] ;
+  var shotTable = fighter.canonMoves ? __canonShotParams : this.params ;
+  var params = shotTable[ fighter.characterIndex ][ fighter.getBulletIndex( ) ][ fighter.getPowerLevel( ) ] ;
   var flag = false ;
   var count = 0 ;
   var id = fighter.getID();
   for( var i = 0; i < params.length; i++ ) {
     // TODO: temporal
-    if( ( params[ i ].laser || params[ i ].homing ) && params[ i ].nextCount ) {
+    if( params[ i ].nextCount ) {
       if( this.count < this.laserCounts[id] + params[ i ].nextCount ) {
         continue ;
       }
@@ -133,17 +134,17 @@ BulletFactory.prototype.create = function( params, fighter ) {
     var laser = this.laserFreelist.get( ) ;
     laser.init( params, this._getImage( params ), 
                 fighter.getOption(params.option), // TODO: temporal
-                this.types[ 3 ]) ; // TODO: temporal
+                this.types[ params.type !== void 0 ? params.type : 3 ]) ; // TODO: temporal
     return laser ;
   }
   if( params.homing ) {
     var homing = this.homingFreelist.get( ) ;
     homing.init( params, this._getImage( params ),
                  fighter.getOption(params.option), // TODO: temporal
-                 this.types[ 2 ]) ; // TODO: temporal
+                 this.types[ params.type !== void 0 ? params.type : 2 ]) ; // TODO: temporal
     return homing ;
   }
-  var key = fighter.characterIndex ;
+  var key = params.type !== void 0 ? params.type : fighter.characterIndex ;
   var bullet = this.freelist.get( ) ;
   bullet.init( params, this._getImage( params ), this.types[ key ], fighter ) ;
   return bullet ;
@@ -231,6 +232,13 @@ Bullet.prototype.init = function(params, image, params2, fighter) {
 
   this.setX(this.getX() + this.fighter.getX());
   this.setY(this.getY() + this.fighter.getY());
+
+  // shots that come out of the orbs next to the player
+  if(params.fromOption !== void 0) {
+    var shotOption = this.fighter.getOption(params.fromOption);
+    this.setX(this.getX() + shotOption.getX());
+    this.setY(this.getY() + shotOption.getY());
+  }
 
   // TODO: temporal. Wanna combine this logic with parent init( ).
   this.indexX = params2.indexX !== void 0 ? params2.indexX : 0;
@@ -332,6 +340,10 @@ LaserView.prototype._initCoordinates = function() {
  * TODO: should be in Laser?
  */
 LaserView.prototype.animate = function() {
+  if(this.element.steady) {
+    this.a = 0.8;
+    return;
+  }
   if(this.element.count < this.element.waitCount ||
      this.element.count + 10 > this.element.keepAlive )
     this.a = 0.2;
@@ -376,6 +388,7 @@ Laser.prototype.init = function(params, image, option, params2) {
   this.power     = params.power     !== void 0 ? params.power     : 1;
   this.waitCount = params.waitCount !== void 0 ? params.waitCount : 50;
   this.rotate    = params2.rotate   !== void 0 ? params2.rotate   : 0;
+  this.steady    = params.steady ? true : false;
   this._initView();
 };
 
@@ -393,7 +406,7 @@ Laser.prototype.display = function( surface ) {
   var x = Math.round( this.option.getCenterX( ) + this.getLeftX( ) ) ;
   var y = Math.round( this.option.getCenterY( ) + this.getCenterY( ) ) ;
 //  surface.save( ) ;
-  if( this.count < this.waitCount || this.count + 10 > this.keepAlive )
+  if( ! this.steady && ( this.count < this.waitCount || this.count + 10 > this.keepAlive ) )
     surface.globalAlpha = 0.2 ;
   else
     surface.globalAlpha = 0.6 ;

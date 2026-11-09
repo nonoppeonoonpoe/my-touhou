@@ -201,6 +201,14 @@ __inherit( Enemy, Element ) ;
 Enemy.prototype._WIDTH = 32 ;
 Enemy.prototype._HEIGHT = 32 ;
 
+// row of each fairy in the enemy image, counted in 48 pixel steps
+Enemy.prototype._LOOKS = {
+  'blue':     32 / 48,
+  'paleblue': 80 / 48,
+  'yellow':   128 / 48,
+  'paleyellow': 176 / 48
+} ;
+
 
 __copyParentMethod(Enemy, Element, 'init');
 Enemy.prototype.init = function(params, image) {
@@ -239,6 +247,15 @@ Enemy.prototype.init = function(params, image) {
   this.height = this._HEIGHT;
   this.collisionWidth  = this.width;
   this.collisionHeight = this.height;
+
+  // other fairies in the enemy image, they're 48 pixels and start lower down
+  this.lookRow = 0;
+  if(params.look && this._LOOKS[params.look]) {
+    this.width  = 48;
+    this.height = 48;
+    this.lookRow = this._LOOKS[params.look];
+    this.indexY = this.lookRow;
+  }
   this.vital      = params.vital      !== void 0 ? params.vital      : 4; // TODO: temporal
   this.powerItem  = params.powerItem  !== void 0 ? params.powerItem  : 0;
   this.lpowerItem = params.lpowerItem !== void 0 ? params.lpowerItem : 0;

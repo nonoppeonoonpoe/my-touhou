@@ -397,6 +397,25 @@ EnemyBullet.prototype._generateView = function() {
 };
 
 
+// a bullet can turn into another kind when it changes direction, like freezing into ice
+__copyParentMethod(EnemyBullet, Element, '_initVector');
+EnemyBullet.prototype._initVector = function() {
+  this.Element_initVector();
+  var turnType = this.vectors[this.vectorIndex].turnInto;
+  if(turnType === void 0 || ! this.enemy)
+    return;
+  var newLook = __enemyBulletTypes[turnType];
+  this.width           = newLook.width;
+  this.height          = newLook.height;
+  this.collisionWidth  = newLook.collisionWidth;
+  this.collisionHeight = newLook.collisionHeight;
+  this.indexX          = newLook.indexX;
+  this.indexY          = newLook.indexY;
+  this.rotate          = newLook.rotate;
+  this._initView();
+};
+
+
 // round hit check against the player's small hitbox
 __copyParentMethod(EnemyBullet, Element, 'checkCollision');
 EnemyBullet.prototype.checkCollision = function( e ) {
