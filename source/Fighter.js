@@ -180,6 +180,9 @@ function Fighter(gameState, maxX, maxY, image, id) {
   this.power = 0;
   this.powerLevel = 0;
   this.deadCount = 0;
+  this.hitRadius = this._HIT_RADIUS;
+  this.hitCount = -1;
+  this.deathbombWindow = this._DEATHBOMB_FRAMES;
   this.spellCard = 'Special Spell'; // TODO: temporary
   this.setFlag(this._FLAG_UNHITTABLE);
   this.options = [];
@@ -200,6 +203,10 @@ Fighter.prototype._SPAN_SLOW = [ 2, 2.5 ] ;
 Fighter.prototype._SPAN_SLOW_OLD = [ 3, 4 ] ;
 Fighter.prototype._COLLISION_WIDTH = [ 4, 6 ] ;
 Fighter.prototype._COLLISION_HEIGHT = [ 4, 6 ] ;
+// round hitbox, about 5px across for both girls
+Fighter.prototype._HIT_RADIUS = 2.5 ;
+Fighter.prototype._MAX_POWER = 128 ;
+Fighter.prototype._DEATHBOMB_FRAMES = 6 ;
 
 Fighter.prototype._FLAG_SLOW = 0x1000 ;
 
@@ -218,6 +225,8 @@ Fighter.prototype.reset = function( ) {
   this.power = 0 ;
   this.powerLevel = 0 ;
   this.deadCount = 0 ;
+  this.hitCount = -1 ;
+  this.deathbombWindow = this._DEATHBOMB_FRAMES ;
   this.count = 0 ;
   this.indexX = 0 ;
   this.indexY = 0 ;
@@ -294,6 +303,9 @@ Fighter.prototype.move = function( ) {
 
 Fighter.prototype.Element_runStep = Element.prototype.runStep;
 Fighter.prototype.runStep = function( ) {
+  // frozen for the deathbomb frames
+  if( this.isHitPending( ) )
+    return ;
   if( this.isFlagSet( this._FLAG_UNHITTABLE ) && this.count > this._UNHITABLE_COUNT + this.deadCount ) {
     this.clearFlag( this._FLAG_UNHITTABLE ) ;
   }
@@ -409,19 +421,41 @@ Fighter.prototype.getOption = function(index) {
  */
 Fighter.prototype.incrementPower = function( num ) {
 
+  var prePower = this.power ;
   var prePowerLevel = this._calculatePowerLevel( this.power ) ;
   this.power += num ;
 
-  if( this.power > 128 ) {
-    this.power = 128 ;
-    return false ;
-  }
+  // the old code returned before updating the level when power went past 128
+  if( this.power > this._MAX_POWER )
+    this.power = this._MAX_POWER ;
 
   this.powerLevel = this._calculatePowerLevel( this.power ) ;
 
   if( this.powerLevel > prePowerLevel )
     this.gameState.notifyFighterPowerUp( ) ;
 
+  if( prePower < this._MAX_POWER && this.power >= this._MAX_POWER )
+    this.gameState.notifyFighterFullPower( this ) ;
+
+} ;
+
+
+Fighter.prototype.decrementPower = function( num ) {
+  this.power -= num ;
+  if( this.power < 0 )
+    this.power = 0 ;
+  this.powerLevel = this._calculatePowerLevel( this.power ) ;
+} ;
+
+
+Fighter.prototype.isFullPower = function( ) {
+  return this.power >= this._MAX_POWER ;
+} ;
+
+
+// hit by something but still has a few frames to deathbomb
+Fighter.prototype.isHitPending = function( ) {
+  return this.hitCount >= 0 ;
 } ;
 
 

@@ -67,7 +67,7 @@ EnemyManager.prototype._generateEnemy = function( ) {
 
 __copyParentMethod(EnemyManager, ElementManager, 'checkCollisionWith');
 EnemyManager.prototype.checkCollisionWith = function(fighter) {
-  if(fighter.isFlagSet(fighter._FLAG_UNHITTABLE))
+  if(! this.gameState.canBeHit(fighter))
     return;
   this.ElementManager_checkCollisionWith(null, fighter, this)
 };
@@ -81,8 +81,7 @@ EnemyManager.prototype.checkCollisionWithFighters = function(fighters) {
 
 
 EnemyManager.prototype.notifyCollision = function(id, fighter, enemy) {
-  fighter.die();
-  this.gameState.notifyFighterDead(fighter, enemy);
+  this.gameState.notifyFighterHit(fighter, enemy);
 };
 
 
