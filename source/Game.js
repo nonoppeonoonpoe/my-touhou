@@ -12,6 +12,7 @@ function Game(mainCanvas, bgCanvas) {
   this.height = Number(mainCanvas.getAttribute('height'));
   this.sounds = [ ] ;
   this.bgms = [ ] ;
+  this.options = this._loadOptions( ) ;
   this.images = [ ] ;
 
   this.interval = null ;
@@ -261,6 +262,7 @@ Game.prototype.soundEffect = function(key) {
       break;
   }
 
+  this.sounds[ key ].volume = Math.min( 1, this.sounds[ key ].volume * this.options.sound / 5 ) ;
   this.sounds[ key ].pause();
   this.sounds[ key ].currentTime = 0;
   this.sounds[ key ].play();
@@ -277,12 +279,48 @@ Game.prototype.soundBGM = function( key ) {
 
   this.currentBGM = key ;
   this.bgms[ key ].loop = true ;
-  // TODO: temporal
-  if( key == Game._BGM_TITLE )
-    this.bgms[ key ].volume = 0.08 ;
-  else
-    this.bgms[ key ].volume = 0.2 ;
+  this.applyMusicVolume( ) ;
   this.bgms[ key ].play( ) ;
+} ;
+
+
+Game.prototype.applyMusicVolume = function( ) {
+  if( this.currentBGM === void 0 )
+    return ;
+  // TODO: temporal
+  var baseVolume = this.currentBGM == Game._BGM_TITLE ? 0.08 : 0.2 ;
+  this.bgms[ this.currentBGM ].volume = Math.min( 1, baseVolume * this.options.music / 5 ) ;
+} ;
+
+
+/*
+ * options are saved in the browser. volumes go 0-10 (5 is the old volume),
+ * lives are the spare lives you start with and bombs refill to that on respawn.
+ */
+Game._OPTIONS_KEY = 'jstouhou_options' ;
+Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3 } ;
+
+Game.prototype._loadOptions = function( ) {
+  var options = { } ;
+  for( var key in Game._DEFAULT_OPTIONS )
+    options[ key ] = Game._DEFAULT_OPTIONS[ key ] ;
+  try {
+    var saved = JSON.parse( window.localStorage.getItem( Game._OPTIONS_KEY ) || '{}' ) ;
+    for( var savedKey in options ) {
+      if( typeof saved[ savedKey ] == 'number' )
+        options[ savedKey ] = saved[ savedKey ] ;
+    }
+  } catch( err ) {
+  }
+  return options ;
+} ;
+
+
+Game.prototype.saveOptions = function( ) {
+  try {
+    window.localStorage.setItem( Game._OPTIONS_KEY, JSON.stringify( this.options ) ) ;
+  } catch( err ) {
+  }
 } ;
 
 

@@ -205,8 +205,8 @@ StageState.prototype.init = function( params ) {
    */
   this.oldRules = params.autoplay ? true : false ;
   this.startParams = params ;
-  this.players = this.oldRules ? 3 : this._START_PLAYERS ;
-  this.bombs = this.oldRules ? 2 : this._START_BOMBS ;
+  this.players = this.oldRules ? 3 : this.getStartPlayers( ) ;
+  this.bombs = this.oldRules ? 2 : this.getStartBombs( ) ;
   this._resetEosdState( ) ;
   this.hiScore = this._loadHiScore( ) ;
 
@@ -274,6 +274,19 @@ StageState.prototype._initItems = function() {
   this.itemManager = new ItemManager(this);
   this.itemManager.initDrawer(this.game.bgLayer, null);
 };
+
+
+// from the options menu, the eosd defaults if it isn't there
+StageState.prototype.getStartPlayers = function( ) {
+  var options = this.game.options ;
+  return options && typeof options.lives == 'number' ? options.lives : this._START_PLAYERS ;
+} ;
+
+
+StageState.prototype.getStartBombs = function( ) {
+  var options = this.game.options ;
+  return options && typeof options.bombs == 'number' ? options.bombs : this._START_BOMBS ;
+} ;
 
 
 StageState.prototype._resetEosdState = function( ) {
@@ -1331,7 +1344,7 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
     return ;
   }
 
-  this.bombs = this.oldRules ? 2 : this._START_BOMBS ;
+  this.bombs = this.oldRules ? 2 : this.getStartBombs( ) ;
   if( ! this.debugFlags.lives )
     this.players-- ;
   fighter.state = fighter._STATE_ALIVE ;
@@ -1428,8 +1441,8 @@ StageState.prototype.notifyBossMovedNextStage = function( boss ) {
 
 StageState.prototype.notifyContinue = function( ) {
   this.didContinue = true ;
-  this.bombs = this.oldRules ? 2 : this._START_BOMBS ;
-  this.players = this.oldRules ? 3 : this._START_PLAYERS ;
+  this.bombs = this.oldRules ? 2 : this.getStartBombs( ) ;
+  this.players = this.oldRules ? 3 : this.getStartPlayers( ) ;
   this.fighterManager.recoverWhenContinue();
   this.state = this._STATE_SHOOTING ;
 } ;
