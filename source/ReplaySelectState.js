@@ -14,7 +14,8 @@ ReplaySelectState._STATE_SELECT               = 0x3 ;
 ReplaySelectState._STATE_REPLAY_LOADING       = 0x4 ;
 ReplaySelectState._STATE_REPLAY_LOADING_ERROR = 0x5 ;
 
-ReplaySelectState._DIR = 'http://gachapin.jp/stg/' ;
+// the old replay server is gone, the replays that came with the game are in replay/
+ReplaySelectState._DIR = 'replay/' ;
 
 
 ReplaySelectState.prototype.init = function( ) {
@@ -25,41 +26,53 @@ ReplaySelectState.prototype.init = function( ) {
 } ;
 
 
-/**
- * TODO: temporal. implement error handling
- */
-ReplaySelectState.prototype.loadReplayList = function( ) {
+// the replay files are plain js objects (no quotes on keys), not json
+ReplaySelectState.prototype._readText = function( text ) {
+  return ( new Function( 'return (' + text + ') ;' ) )( ) ;
+} ;
+
+
+ReplaySelectState.prototype._loadFile = function( path, onLoad, errorState ) {
   var xhr = new XMLHttpRequest( ) ;
-  xhr.open( 'GET', ReplaySelectState._DIR + 'getlist.cgi', true ) ;
+  xhr.open( 'GET', ReplaySelectState._DIR + path, true ) ;
   var self = this ;
   xhr.onload = function( ) {
-    self.list = JSON.parse( xhr.responseText ).list ;
-    self.list.pop( ) ;
-    self.state = ReplaySelectState._STATE_SELECT ;
+    var data = null ;
+    try {
+      if( xhr.status == 200 || xhr.status == 0 )
+        data = self._readText( xhr.responseText ) ;
+    } catch( err ) {
+      data = null ;
+    }
+    if( data )
+      onLoad( data ) ;
+    else
+      self.state = errorState ;
   } ;
-  xhr.onerror = function( e ) {
-    window.alert( e ) ;
+  xhr.onerror = function( ) {
+    self.state = errorState ;
   } ;
   xhr.send( null ) ;
+} ;
+
+
+ReplaySelectState.prototype.loadReplayList = function( ) {
+  var self = this ;
+  this._loadFile( 'replay_list.txt', function( list ) {
+    self.list = list ;
+    self.state = ReplaySelectState._STATE_SELECT ;
+  }, ReplaySelectState._STATE_LIST_LOADING_ERROR ) ;
   this.state = ReplaySelectState._STATE_LIST_LOADING ;
 } ;
 
 
-/**
- * TODO: temporal. implement error handling
- */
-ReplaySelectState.prototype.loadReplay = function( index ) {
-  var xhr = new XMLHttpRequest( ) ;
-  xhr.open( 'GET', ReplaySelectState._DIR + 'get.cgi?id=' + this.list[ this.index ].id , true ) ;
+ReplaySelectState.prototype.loadReplay = function( ) {
+  if( this.state != ReplaySelectState._STATE_SELECT || this.list.length == 0 )
+    return ;
   var self = this ;
-  xhr.onload = function( ) {
-    var params = JSON.parse( xhr.responseText ) ;
+  this._loadFile( 'replay' + this.list[ this.index ].id + '.txt', function( params ) {
     self.game.notifyReplaySelectConclusion( params ) ;
-  } ;
-  xhr.onerror = function( e ) {
-    window.alert( e ) ;
-  } ;
-  xhr.send( null ) ;
+  }, ReplaySelectState._STATE_REPLAY_LOADING_ERROR ) ;
   this.state = ReplaySelectState._STATE_REPLAY_LOADING ;
 } ;
 
@@ -138,6 +151,10 @@ ReplaySelectState.prototype._displayMessage = function( surface ) {
       this.state == ReplaySelectState._STATE_REPLAY_LOADING ) {
     surface.fillText( 'Loading...', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
   }
+  if( this.state == ReplaySelectState._STATE_LIST_LOADING_ERROR ||
+      this.state == ReplaySelectState._STATE_REPLAY_LOADING_ERROR ) {
+    surface.fillText( 'Could not load the replay', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
+  }
 
   surface.restore( ) ;
 
@@ -209,6 +226,8 @@ ReplaySelectState.prototype.handleKeyDown = function( e ) {
       this.game.notifyLoadingConclusion( ) ; // TODO: temporal
       break ;
     case 90: // z
+      if( this.state != ReplaySelectState._STATE_SELECT )
+        break ;
       this.loadReplay( ) ;
       this._soundEffect( Game._SE_SELECT ) ;
       break ;

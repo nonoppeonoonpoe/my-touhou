@@ -326,6 +326,13 @@ Game.prototype._checkDebugWord = function( e ) {
 } ;
 
 
+// let go of every key when the window loses focus, so nothing stays stuck down
+Game.prototype.handleBlur = function( ) {
+  if( this.states[ this.state ].releaseAllKeys )
+    this.states[ this.state ].releaseAllKeys( ) ;
+} ;
+
+
 Game.prototype.handleKeyUp = function( e ) {
   // TODO: temporal
   if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
@@ -352,7 +359,16 @@ Game.prototype._runStep = function( ) {
     if( this.lastStepTime === undefined || nowTime - this.lastStepTime > 250 )
       this.lastStepTime = nowTime - stepMs ;
 
+    // on a 60hz screen the frames jitter a bit around 16.7ms, which made
+    // the loop do 0 or 2 steps some frames. near 60hz just do one step a frame
+    var frameMs = this.lastFrameTime === undefined ? 0 : nowTime - this.lastFrameTime ;
+    this.lastFrameTime = nowTime ;
     var stepsDone = 0 ;
+    if( Math.abs( frameMs - stepMs ) < 2.5 ) {
+      this._runOneStep( ) ;
+      this.lastStepTime = nowTime ;
+      stepsDone = 1 ;
+    }
     while( nowTime - this.lastStepTime >= stepMs && stepsDone < 5 ) {
       this._runOneStep( ) ;
       this.lastStepTime += stepMs ;
@@ -519,10 +535,8 @@ Game.prototype.notifyReplaySelectConclusion = function( params ) {
  * TODO: temporal
  */
 Game.prototype.notifyQuitStage = function( flag ) {
-  if(flag && ! this.isMultiPlay())
-    this._changeState( Game._STATE_POST_REPLAY, { } ) ;
-  else
-    this._changeState( Game._STATE_OPENING, { } ) ;
+  // the "save your replay?" screen posted to a server that's gone, so skip it
+  this._changeState( Game._STATE_OPENING, { } ) ;
 
   // TODO: temporal
   if(this.isMultiPlay())

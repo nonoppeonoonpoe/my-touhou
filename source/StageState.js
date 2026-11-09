@@ -111,11 +111,20 @@ StageState.prototype._STATE_GAME_OVER = 0x4 ;
 StageState.prototype.init = function( params ) {
   this.state = this._STATE_SHOOTING ;
 
-  if(params.lag !== void 0)
-    this.lag = params.lag;
+  // single play has no reason to delay input, only online co-op needs it
+  if(this.game.isMultiPlay()) {
+    this.lag = this._BUTTON_LAG;
+    if(params.lag !== void 0)
+      this.lag = params.lag;
+  } else {
+    this.lag = 0;
+  }
 
   this.keyFlag = 0;
   this.keyFlag2 = 0;
+  this.keyTapped = 0;
+  this.lastDeployed = 0;
+  this.lastDeployed2 = 0;
   this.keyFlags.free();
   this.keyFlags2.free();
   this.keyFlagHistories.free();
@@ -155,6 +164,7 @@ StageState.prototype.init = function( params ) {
     this.baseCharacterIndex2 = params.characterIndex2;
   }
   this.fighter.setCharacterIndex(this.baseCharacterIndex);
+  this.fighter.oldMovement = params.autoplay ? true : false;
   if(this.game.isMultiPlay()) {
     this.fighter2.setCharacterIndex(this.baseCharacterIndex2);
   }
@@ -241,8 +251,11 @@ StageState.prototype.runStep = function( ) {
     this._actAsRecord( ) ;
   // TODO: temporal
   } else if(! this.isFlagSet(this._FLAG_AUTO_PLAY)) {
-    this.keyFlags.push(this.keyFlag);
-    this.keyFlagHistories.push(this.keyFlag);
+    // a key tapped and let go between two steps still counts for one step
+    var stepFlag = this.keyFlag | this.keyTapped;
+    this.keyTapped = 0;
+    this.keyFlags.push(stepFlag);
+    this.keyFlagHistories.push(stepFlag);
     this.keyFlagHistories.shiftUntilLengthIs(this._BUTTON_HISTORY);
     this._deployKeyFlag(this.keyFlags.shift(), this.fighter);
     if(this.game.isMultiPlay()) {
@@ -331,9 +344,12 @@ StageState.prototype.runStep = function( ) {
   // TODO: temporal
   if(this.game.isMultiPlay())
     this._sync();
+} ;
 
-  // TODO: temporal
-  this.keyFlag = this.states[this.state].resetButton(this.keyFlag);
+
+StageState.prototype.releaseAllKeys = function( ) {
+  this.keyFlag = 0;
+  this.keyTapped = 0;
 } ;
 
 
@@ -590,6 +606,7 @@ StageState.prototype.handleKeyDown = function( e ) {
     return ;
 //  this.states[ this.state ].handleKeyDown( e ) ;
   this.keyFlag = this._pushButton(e, this.keyFlag);
+  this.keyTapped = this._pushButton(e, this.keyTapped);
 } ;
 
 
@@ -1151,66 +1168,39 @@ StageState.prototype._releaseButton = function(e, flag) {
 };
 
 
-// TODO: temporal
+StageState.prototype._DEPLOY_KEYS = [
+  [16, 'SHIFT'], [32, 'SPACE'], [37, 'LEFT'], [38, 'UP'],
+  [39, 'RIGHT'], [40, 'DOWN'], [88, 'X'], [90, 'Z']
+];
+
+/*
+ * movement, shift and z are held keys while shooting.
+ * space and x, and every key outside of shooting (talk, clear, game over),
+ * only fire once when the key goes down.
+ */
 StageState.prototype._deployKeyFlag = function(flag, fighter) {
+  var lastFlag = this.lastDeployed;
+  if(fighter === this.fighter2)
+    lastFlag = this.lastDeployed2;
+  var pressedFlag = flag & ~lastFlag;
+
+  if(fighter === this.fighter2)
+    this.lastDeployed2 = flag;
+  else
+    this.lastDeployed = flag;
+
   var e = {};
-
-  e.keyCode = 16;
-  if(flag & this._BUTTON_SHIFT) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
+  for(var i = 0; i < this._DEPLOY_KEYS.length; i++) {
+    var keyCode = this._DEPLOY_KEYS[i][0];
+    var keyBit = this['_BUTTON_' + this._DEPLOY_KEYS[i][1]];
+    var heldKey = this.state == this._STATE_SHOOTING && keyCode != 32 && keyCode != 88;
+    e.keyCode = keyCode;
+    if(heldKey ? (flag & keyBit) : (pressedFlag & keyBit)) {
+      this.states[this.state].handleKeyDown(e, fighter);
+    } else {
+      this.states[this.state].handleKeyUp(e, fighter);
+    }
   }
-
-  e.keyCode = 32;
-  if(flag & this._BUTTON_SPACE) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 37;
-  if(flag & this._BUTTON_LEFT) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 38;
-  if(flag & this._BUTTON_UP) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 39;
-  if(flag & this._BUTTON_RIGHT) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 40;
-  if(flag & this._BUTTON_DOWN) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 88;
-  if(flag & this._BUTTON_X) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
-  e.keyCode = 90;
-  if(flag & this._BUTTON_Z) {
-    this.states[this.state].handleKeyDown(e, fighter);
-  } else {
-    this.states[this.state].handleKeyUp(e, fighter);
-  }
-
 };
 
 
@@ -1380,8 +1370,9 @@ StageAbstractState.prototype.getImage = function( key ) {
 } ;
 
 
+// keys are only wiped on purpose now, presses are found in _deployKeyFlag
 StageAbstractState.prototype.resetButton = function(flag) {
-  return 0;
+  return flag;
 };
 
 
@@ -1487,14 +1478,6 @@ ShootingState.prototype.handleKeyUp = function(e, fighter) {
 
 ShootingState.prototype.updateDisplay = function( surface ) {
 } ;
-
-
-ShootingState.prototype.resetButton = function(flag) {
-  flag &= ~this.stage._BUTTON_SPACE;
-  flag &= ~this.stage._BUTTON_X;
-  return flag;
-};
-
 
 
 function TalkState( stage ) {

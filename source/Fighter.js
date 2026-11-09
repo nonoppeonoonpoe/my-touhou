@@ -195,7 +195,9 @@ Fighter.prototype._MARISA = 1 ;
 // TODO: prameters should be in parameter .js file.
 Fighter.prototype._SHIP_IMAGE = [ Game._IMG_REIMU_SHIP, Game._IMG_MARISA_SHIP ] ;
 Fighter.prototype._SPAN_FAST = [ 4, 5 ] ;
-Fighter.prototype._SPAN_SLOW = [ 3, 4 ] ;
+Fighter.prototype._SPAN_SLOW = [ 2, 2.5 ] ;
+// the old speeds, kept so the old replays still line up
+Fighter.prototype._SPAN_SLOW_OLD = [ 3, 4 ] ;
 Fighter.prototype._COLLISION_WIDTH = [ 4, 6 ] ;
 Fighter.prototype._COLLISION_HEIGHT = [ 4, 6 ] ;
 
@@ -266,21 +268,27 @@ Fighter.prototype._setDirection = function( ) {
 Fighter.prototype.move = function( ) {
 
   this._setDirection( ) ;
+  var slowSpans = this.oldMovement ? this._SPAN_SLOW_OLD : this._SPAN_SLOW ;
   var d = this.isFlagSet( this._FLAG_SLOW )
-            ? this._SPAN_SLOW[ this.characterIndex ] : this._SPAN_FAST[ this.characterIndex ] ;
-  // TODO: temporal
-  if( this.isFlagSet( this._FLAG_MOVE_LEFT ) ) {
-    this.x -= d ;
-  }
-  if( this.isFlagSet( this._FLAG_MOVE_DOWN ) ) {
-    this.y += d ;
-  }
-  if( this.isFlagSet( this._FLAG_MOVE_RIGHT ) ) {
-    this.x += d ;
-  }
-  if( this.isFlagSet( this._FLAG_MOVE_UP ) ) {
-    this.y -= d ;
-  }
+            ? slowSpans[ this.characterIndex ] : this._SPAN_FAST[ this.characterIndex ] ;
+
+  var moveX = 0 ;
+  var moveY = 0 ;
+  if( this.isFlagSet( this._FLAG_MOVE_LEFT ) )
+    moveX -= 1 ;
+  if( this.isFlagSet( this._FLAG_MOVE_RIGHT ) )
+    moveX += 1 ;
+  if( this.isFlagSet( this._FLAG_MOVE_UP ) )
+    moveY -= 1 ;
+  if( this.isFlagSet( this._FLAG_MOVE_DOWN ) )
+    moveY += 1 ;
+
+  // diagonals go the same speed as straight lines
+  if( moveX != 0 && moveY != 0 && ! this.oldMovement )
+    d = d * 0.70710678 ;
+
+  this.x += moveX * d ;
+  this.y += moveY * d ;
   this._beInTheField( ) ;
 } ;
 
