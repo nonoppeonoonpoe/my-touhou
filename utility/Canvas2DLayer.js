@@ -87,7 +87,9 @@ Canvas2DLayer.prototype.perspective = function(theta, near, far) {
 
 
 Canvas2DLayer.prototype.ortho = function(near, far) {
-  this.mat4.ortho(0, this.width, -this.height, 0, near, far, this.pMatrix);
+  var scale = this.scale || 1;
+  this.mat4.ortho(0, this.width / scale, -this.height / scale, 0, near, far,
+                  this.pMatrix);
 };
 
 

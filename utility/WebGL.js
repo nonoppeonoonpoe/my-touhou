@@ -196,7 +196,9 @@ Layer.prototype.perspective = function(theta, near, far) {
 
 
 Layer.prototype.ortho = function(near, far) {
-  this.mat4.ortho(0, this.gl.viewportWidth, -this.gl.viewportHeight, 0,
+  var scale = this.scale || 1;
+  this.mat4.ortho(0, this.gl.viewportWidth / scale,
+                  -this.gl.viewportHeight / scale, 0,
              near, far, this.pMatrix);
 };
 
