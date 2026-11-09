@@ -755,8 +755,39 @@ StageState.prototype._displayStageTitle = function( surface ) {
 /**
  * TODO: remove strings?
  */
+/*
+ * the side panel only changes when one of its numbers or the face does,
+ * so it's drawn into its own canvas and that canvas is reused
+ */
 StageState.prototype._drawSide = function(surface) {
-  var sideX = this.getWidth();
+  if(this.game.debug) {
+    this._drawSidePanel(surface, this.getWidth());
+    return;
+  }
+  var shownHiScore = Math.max(this.hiScore || 0, this.viewScore);
+  var sideKey = [shownHiScore, this.viewScore, this.players, this.bombs,
+                 this.fighter.isFullPower() ? 'MAX' : this.fighter.getPower(),
+                 this.graze, this.pointItems, this._getFaceImage().src, this.game.scale].join('|');
+  var sideScale = this.game.scale;
+  if(! this.sideCanvas || this.sideCanvasScale != sideScale) {
+    this.sideCanvas = document.createElement('canvas');
+    this.sideCanvas.width = Game._SIDE_WIDTH * sideScale;
+    this.sideCanvas.height = this.getHeight() * sideScale;
+    this.sideCanvasScale = sideScale;
+    this.sideKey = null;
+  }
+  if(sideKey != this.sideKey) {
+    this.sideKey = sideKey;
+    var sideCtx = this.sideCanvas.getContext('2d');
+    sideCtx.setTransform(sideScale, 0, 0, sideScale, 0, 0);
+    sideCtx.clearRect(0, 0, Game._SIDE_WIDTH, this.getHeight());
+    this._drawSidePanel(sideCtx, 0);
+  }
+  surface.drawImage(this.sideCanvas, this.getWidth(), 0, Game._SIDE_WIDTH, this.getHeight());
+};
+
+
+StageState.prototype._drawSidePanel = function(surface, sideX) {
   surface.save();
   surface.fillStyle = 'rgb(0, 0, 0)' ;
   surface.fillRect(sideX, 0, Game._SIDE_WIDTH, this.getHeight());
@@ -2680,20 +2711,21 @@ TalkState.prototype._displaySerif = function( surface ) {
   var speakerSide = line.left && line.left.active ? line.left : line.right ;
   var speaker = speakerSide ? speakerSide.character : null ;
 
-  // a name tab on the window, it slides over to the side that talks
+  // the speaker's name in her color, on the side that talks
   if( speaker ) {
     var tagName = TalkState._NAMES[ speaker ] || speaker ;
-    surface.font = 'bold 14px Arial' ;
-    var tagWidth = surface.measureText( tagName ).width + 20 ;
     var tagTime = __easeOut( __animTime( this.lineCount, 0, 10 ) ) ;
-    var tagLeft = speakerSide == line.left ? 50 : 430 - tagWidth ;
-    surface.globalAlpha = 0.9 * tagTime ;
-    surface.fillStyle = TalkState._NAME_COLORS[ speaker ] || 'rgb( 90, 90, 90 )' ;
-    surface.fillRect( tagLeft, 328 + 6 * ( 1 - tagTime ), tagWidth, 22 ) ;
+    var onLeft = speakerSide == line.left ;
+    surface.font = 'italic bold 17px Georgia, serif' ;
+    surface.textAlign = onLeft ? 'left' : 'right' ;
+    surface.lineJoin = 'round' ;
     surface.globalAlpha = tagTime ;
-    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-    surface.textAlign = 'left' ;
-    surface.fillText( tagName, tagLeft + 10, 344 + 6 * ( 1 - tagTime ) ) ;
+    var tagX = ( onLeft ? 56 : 424 ) + ( onLeft ? -10 : 10 ) * ( 1 - tagTime ) ;
+    surface.lineWidth = 4 ;
+    surface.strokeStyle = 'rgba( 0, 0, 0, 0.85 )' ;
+    surface.strokeText( tagName, tagX, 343 ) ;
+    surface.fillStyle = TalkState._NAME_COLORS[ speaker ] || 'rgb( 230, 230, 230 )' ;
+    surface.fillText( tagName, tagX, 343 ) ;
   }
 
   // the line types out letter by letter
@@ -2788,8 +2820,6 @@ ClearState.prototype.updateDisplay = function( surface ) {
   var pattern = surface.createPattern( this.getImage( Game._IMG_SCORE_BACK ), '' ) ;
   surface.fillStyle = pattern ;
   surface.fillRect( 0, base, width, height ) ;
-  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
-  surface.fillRect( 0, base - 3, width, 3 ) ;
 
   var panelTime = __animTime( this.count, wipeSpan * 0.6, 16 ) ;
   if( panelTime <= 0 ) {

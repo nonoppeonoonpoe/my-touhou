@@ -358,10 +358,9 @@ Bomb.prototype._sparkStep = function( ) {
 } ;
 
 
+// the spark covers the whole screen above marisa
 Bomb.prototype._inSpark = function( target, targetHalfWidth ) {
-  if( target.getY( ) > this.getY( ) )
-    return false ;
-  return this.Math.abs( target.getX( ) - this.getX( ) ) < this._SPARK_HALF_WIDTH + targetHalfWidth ;
+  return target.getY( ) <= this.getY( ) + targetHalfWidth ;
 } ;
 
 

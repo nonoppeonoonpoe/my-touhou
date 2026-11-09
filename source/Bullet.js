@@ -60,11 +60,88 @@ BulletManager.prototype.create = function( fighter ) {
 
 
 __copyParentMethod(BulletManager, ElementManager, 'checkCollisionWith');
+BulletManager.prototype._GRID_COLUMN = 64;
+
+/*
+ * shots are sorted into columns of the screen first, so each enemy only
+ * checks the shots in its own columns. they're still checked in the same
+ * order as before, so nothing plays out differently
+ */
 BulletManager.prototype.checkCollisionWithEnemies = function(enemies) {
-  var self = this;
-  for(var i = 0; i < enemies.length; i++) {
-    this.ElementManager_checkCollisionWith(null, enemies[i], this);
+  var shots = this.elements;
+  if(shots.length < 16 || enemies.length == 0) {
+    for(var i = 0; i < enemies.length; i++)
+      this.ElementManager_checkCollisionWith(null, enemies[i], this);
+    return;
   }
+
+  var columnWidth = this._GRID_COLUMN;
+  var columnNum = Math.ceil(this.gameState.getWidth() / columnWidth) + 2;
+  if(! this.gridColumns || this.gridColumns.length != columnNum) {
+    this.gridColumns = [];
+    for(var c = 0; c < columnNum; c++)
+      this.gridColumns.push([]);
+    this.gridEverywhere = [];
+    this.gridSeen = [];
+    this.gridPicked = [];
+  }
+  for(var c2 = 0; c2 < columnNum; c2++)
+    this.gridColumns[c2].length = 0;
+  this.gridEverywhere.length = 0;
+
+  for(var j = 0; j < shots.length; j++) {
+    var shot = shots[j];
+    // lasers have their own long hit check, so they go everywhere
+    if(shot.checkCollision !== Element.prototype.checkCollision) {
+      this.gridEverywhere.push(j);
+      continue;
+    }
+    var firstColumn = this._gridColumnOf(shot.getCollisionLeftX(), columnNum);
+    var lastColumn = this._gridColumnOf(shot.getCollisionRightX(), columnNum);
+    for(var col = firstColumn; col <= lastColumn; col++)
+      this.gridColumns[col].push(j);
+  }
+
+  var seen = this.gridSeen;
+  var picked = this.gridPicked;
+  for(var k = 0; k < shots.length; k++)
+    seen[k] = -1;
+  for(var e = 0; e < enemies.length; e++) {
+    var enemy = enemies[e];
+    picked.length = 0;
+    var enemyFirst = this._gridColumnOf(enemy.getCollisionLeftX(), columnNum);
+    var enemyLast = this._gridColumnOf(enemy.getCollisionRightX(), columnNum);
+    for(var ec = enemyFirst; ec <= enemyLast; ec++) {
+      var column = this.gridColumns[ec];
+      for(var n = 0; n < column.length; n++) {
+        if(seen[column[n]] != e) {
+          seen[column[n]] = e;
+          picked.push(column[n]);
+        }
+      }
+    }
+    for(var m = 0; m < this.gridEverywhere.length; m++) {
+      if(seen[this.gridEverywhere[m]] != e) {
+        seen[this.gridEverywhere[m]] = e;
+        picked.push(this.gridEverywhere[m]);
+      }
+    }
+    picked.sort(function(a, b) { return a - b; });
+    for(var p = 0; p < picked.length; p++) {
+      if(shots[picked[p]].checkCollision(enemy))
+        this.notifyCollision(null, enemy, shots[picked[p]]);
+    }
+  }
+};
+
+
+BulletManager.prototype._gridColumnOf = function(x, columnNum) {
+  var column = Math.floor(x / this._GRID_COLUMN) + 1;
+  if(column < 0)
+    return 0;
+  if(column >= columnNum)
+    return columnNum - 1;
+  return column;
 };
 
 

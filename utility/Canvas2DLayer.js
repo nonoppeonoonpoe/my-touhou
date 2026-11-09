@@ -70,7 +70,22 @@ Canvas2DLayer.prototype.viewport = function() {
 };
 
 
+// called after the canvas changes size (the quality option)
+Canvas2DLayer.prototype.resize = function() {
+  this.width = this.canvas.width;
+  this.height = this.canvas.height;
+  this.floorCanvas = null;
+};
+
+
+// the clear waits for the first draw, since the small floor covers it anyway
 Canvas2DLayer.prototype.clear = function() {
+  this.needsClear = true;
+};
+
+
+Canvas2DLayer.prototype._doClear = function() {
+  this.needsClear = false;
   var ctx = this.ctx;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1.0;
@@ -191,9 +206,16 @@ Canvas2DLayer.prototype.draw = function(texture, vBuffer, cBuffer, iBuffer,
     // a quad partly behind the camera (the floor) is drawn as strips and
     // only the strips in front of the camera are kept
     if(behind || wSpread > Math.abs(clip[0][3]) * 0.02) {
-      this._drawStrips(texture, vData, cData, vb, cb, alpha, dark);
+      this._drawFloor(texture, vData, cData, vb, cb, alpha, dark);
     } else {
+      if(this.needsClear) {
+        this._doClear();
+        ctx.globalCompositeOperation =
+          (blend == this._BLEND_ADD_ALPHA) ? 'lighter' : 'source-over';
+      }
       this._fillScreenPoints(clip);
+      if(this._isOffScreen(this._screenPoints))
+        continue;
       this._fillTexPoints(texture, cData, cb);
       this._drawPiece(texture, this._screenPoints, this._texPoints,
                       alpha, dark);
@@ -201,6 +223,76 @@ Canvas2DLayer.prototype.draw = function(texture, vBuffer, cBuffer, iBuffer,
   }
 
   ctx.restore();
+};
+
+
+Canvas2DLayer.prototype._isOffScreen = function(p) {
+  var minX = Math.min(p[0][0], p[1][0], p[2][0], p[3][0]);
+  var maxX = Math.max(p[0][0], p[1][0], p[2][0], p[3][0]);
+  var minY = Math.min(p[0][1], p[1][1], p[2][1], p[3][1]);
+  var maxY = Math.max(p[0][1], p[1][1], p[2][1], p[3][1]);
+  return maxX < 0 || maxY < 0 || minX > this.width || minY > this.height;
+};
+
+
+/*
+ * the tilted floor is the most work to draw. on a big canvas it's drawn
+ * into a half size canvas first and stretched, and the darkening for
+ * spells is one fill over the whole thing instead of one per strip
+ */
+Canvas2DLayer.prototype._drawFloor = function(texture, vData, cData, vb, cb,
+                                              alpha, dark) {
+  var mainCtx = this.ctx;
+  var mainWidth = this.width;
+  var mainHeight = this.height;
+  var useSmall = (this.scale || 1) > 1;
+  var drawMode = mainCtx.globalCompositeOperation;
+  if(this.needsClear && ! useSmall) {
+    this._doClear();
+    mainCtx.globalCompositeOperation = drawMode;
+  }
+
+  if(useSmall) {
+    var floorWidth = Math.ceil(mainWidth / 2);
+    var floorHeight = Math.ceil(mainHeight / 2);
+    if(! this.floorCanvas) {
+      this.floorCanvas = document.createElement('canvas');
+      this.floorCanvas.width = floorWidth;
+      this.floorCanvas.height = floorHeight;
+      this.floorCtx = this.floorCanvas.getContext('2d');
+    }
+    this.ctx = this.floorCtx;
+    this.width = floorWidth;
+    this.height = floorHeight;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.globalAlpha = 1.0;
+    this.ctx.fillStyle = 'rgb(0, 0, 0)';
+    this.ctx.fillRect(0, 0, floorWidth, floorHeight);
+  }
+
+  this._drawStrips(texture, vData, cData, vb, cb, alpha, 1.0);
+
+  if(dark < 0.99 && drawMode == 'source-over') {
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.globalAlpha = Math.min(1.0, alpha) * (1.0 - Math.max(0.0, dark));
+    this.ctx.fillStyle = 'rgb(0, 0, 0)';
+    this.ctx.fillRect(0, 0, this.width, this.height);
+  }
+
+  if(useSmall) {
+    this.ctx = mainCtx;
+    this.width = mainWidth;
+    this.height = mainHeight;
+    mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mainCtx.globalAlpha = 1.0;
+    // the stretched floor covers the whole canvas, so it stands in for the clear
+    if(this.needsClear) {
+      this.needsClear = false;
+      mainCtx.globalCompositeOperation = 'copy';
+    }
+    mainCtx.drawImage(this.floorCanvas, 0, 0, mainWidth, mainHeight);
+    mainCtx.globalCompositeOperation = drawMode;
+  }
 };
 
 

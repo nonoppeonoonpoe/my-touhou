@@ -74,9 +74,10 @@ StageFx.prototype.popWords = function( x, y, text, color ) {
 } ;
 
 
+// past the limit new parts are just skipped, moving the whole list was slow
 StageFx.prototype._add = function( part ) {
   if( this.parts.length >= this._MAX_PARTS )
-    this.parts.shift( ) ;
+    return ;
   part.age = 0 ;
   this.parts.push( part ) ;
 } ;
@@ -387,21 +388,32 @@ StageFx.prototype._updateDarkness = function( ) {
 } ;
 
 
+// the darkness ball is drawn once into its own canvas and then just stretched
+StageFx.prototype._getDarkImage = function( ) {
+  if( this.darkImage )
+    return this.darkImage ;
+  var darkCanvas = document.createElement( 'canvas' ) ;
+  darkCanvas.width = 256 ;
+  darkCanvas.height = 256 ;
+  var darkCtx = darkCanvas.getContext( '2d' ) ;
+  var darkGlow = darkCtx.createRadialGradient( 128, 128, 128 * 0.15, 128, 128, 128 ) ;
+  darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
+  darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
+  darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
+  darkCtx.fillStyle = darkGlow ;
+  darkCtx.fillRect( 0, 0, 256, 256 ) ;
+  this.darkImage = darkCanvas ;
+  return darkCanvas ;
+} ;
+
+
 StageFx.prototype._drawDarkness = function( surface ) {
   if( this.darkRadius <= 0 )
     return ;
   // it wobbles a little so it looks alive
   var darkSize = this.darkRadius + Math.sin( this.darkCount / 9 ) * this.darkRadius * 0.06 ;
-  var darkGlow = surface.createRadialGradient( this.darkX, this.darkY, darkSize * 0.15,
-                                               this.darkX, this.darkY, darkSize ) ;
-  darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
-  darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
-  darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
   surface.globalAlpha = 1 ;
-  surface.fillStyle = darkGlow ;
-  surface.beginPath( ) ;
-  surface.arc( this.darkX, this.darkY, darkSize, 0, Math.PI * 2 ) ;
-  surface.fill( ) ;
+  surface.drawImage( this._getDarkImage( ), this.darkX - darkSize, this.darkY - darkSize, darkSize * 2, darkSize * 2 ) ;
 } ;
 
 
@@ -417,22 +429,37 @@ StageFx.prototype._drawSparks = function( surface ) {
     var sparkAge = spark.count ;
     var grow = Math.min( 1, sparkAge / 10 ) ;
     var fadeOut = Math.min( 1, ( spark._LIFE - sparkAge ) / 15 ) ;
-    var halfWidth = ( spark._SPARK_HALF_WIDTH + 6 ) * grow * ( 0.92 + Math.sin( sparkAge * 0.9 ) * 0.08 ) ;
+    var fieldWidth = this.stage.getWidth( ) ;
+    var wobble = 0.92 + Math.sin( sparkAge * 0.9 ) * 0.08 ;
+    var halfWidth = ( spark._SPARK_HALF_WIDTH + 6 ) * grow * wobble ;
     var beamBottom = spark.getY( ) - 14 ;
     var beamX = spark.getX( ) ;
 
-    var beamColors = surface.createLinearGradient( beamX - halfWidth, 0, beamX + halfWidth, 0 ) ;
+    // it leaves the mini-hakkero narrow and opens up to the whole screen
+    var leftEdge = beamX - ( beamX + 20 ) * grow ;
+    var rightEdge = beamX + ( fieldWidth - beamX + 20 ) * grow ;
+    var spreadTop = beamBottom - 110 ;
+    var beamColors = surface.createLinearGradient( leftEdge, 0, rightEdge, 0 ) ;
     var hueShift = ( sparkAge * 7 ) % 360 ;
-    beamColors.addColorStop( 0, 'hsla(' + hueShift + ', 100%, 60%, 0)' ) ;
-    beamColors.addColorStop( 0.18, 'hsla(' + ( ( hueShift + 60 ) % 360 ) + ', 100%, 65%, 0.7)' ) ;
-    beamColors.addColorStop( 0.38, 'rgba(255, 255, 255, 0.95)' ) ;
-    beamColors.addColorStop( 0.62, 'rgba(255, 255, 255, 0.95)' ) ;
-    beamColors.addColorStop( 0.82, 'hsla(' + ( ( hueShift + 180 ) % 360 ) + ', 100%, 65%, 0.7)' ) ;
-    beamColors.addColorStop( 1, 'hsla(' + ( ( hueShift + 240 ) % 360 ) + ', 100%, 60%, 0)' ) ;
+    var corePart = ( beamX - leftEdge ) / Math.max( 1, rightEdge - leftEdge ) ;
+    beamColors.addColorStop( 0, 'hsla(' + hueShift + ', 100%, 60%, 0.75)' ) ;
+    beamColors.addColorStop( Math.max( 0, corePart - 0.3 ), 'hsla(' + ( ( hueShift + 60 ) % 360 ) + ', 100%, 65%, 0.85)' ) ;
+    beamColors.addColorStop( Math.max( 0, corePart - 0.12 ), 'rgba(255, 255, 255, 0.95)' ) ;
+    beamColors.addColorStop( Math.min( 1, corePart + 0.12 ), 'rgba(255, 255, 255, 0.95)' ) ;
+    beamColors.addColorStop( Math.min( 1, corePart + 0.3 ), 'hsla(' + ( ( hueShift + 180 ) % 360 ) + ', 100%, 65%, 0.85)' ) ;
+    beamColors.addColorStop( 1, 'hsla(' + ( ( hueShift + 240 ) % 360 ) + ', 100%, 60%, 0.75)' ) ;
 
     surface.globalAlpha = fadeOut ;
     surface.fillStyle = beamColors ;
-    surface.fillRect( beamX - halfWidth, 0, halfWidth * 2, beamBottom ) ;
+    surface.beginPath( ) ;
+    surface.moveTo( beamX - halfWidth * 0.6, beamBottom ) ;
+    surface.lineTo( leftEdge, spreadTop ) ;
+    surface.lineTo( leftEdge, 0 ) ;
+    surface.lineTo( rightEdge, 0 ) ;
+    surface.lineTo( rightEdge, spreadTop ) ;
+    surface.lineTo( beamX + halfWidth * 0.6, beamBottom ) ;
+    surface.closePath( ) ;
+    surface.fill( ) ;
 
     // the glowing ball at the mini-hakkero
     var hakkeroGlow = surface.createRadialGradient( beamX, beamBottom, 2, beamX, beamBottom, halfWidth * 0.9 ) ;
@@ -444,7 +471,7 @@ StageFx.prototype._drawSparks = function( surface ) {
     surface.fill( ) ;
 
     if( sparkAge % 3 == 0 )
-      this._addSparks( beamX, beamBottom - Math.random( ) * beamBottom, 2, 4, 18, 'rgb(255, 255, 210)', 2 ) ;
+      this._addSparks( leftEdge + Math.random( ) * ( rightEdge - leftEdge ), Math.random( ) * spreadTop, 3, 4, 18, 'rgb(255, 255, 210)', 2 ) ;
   }
   surface.globalAlpha = 1 ;
 } ;
