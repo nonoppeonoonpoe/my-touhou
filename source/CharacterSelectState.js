@@ -208,6 +208,7 @@ CharacterSelectState.prototype.handleKeyDown = function( e ) {
       this.infoCount = 0 ;
       break ;
     case 88: // x
+      this._soundEffect( Game._SE_CANCEL ) ;
       this.game.notifyLoadingConclusion( this.index ) ; // TODO: temporal
       break ;
     case 90: // z
@@ -215,7 +216,7 @@ CharacterSelectState.prototype.handleKeyDown = function( e ) {
       if( this.game.isMultiPlay( ) )
         this.game.notifyCharacterSelectConclusion( this.index ) ;
       else {
-        this._soundEffect( Game._SE_SELECT ) ;
+        this._soundEffect( Game._SE_OK ) ;
         this.confirmCount = 1 ;
       }
       break ;

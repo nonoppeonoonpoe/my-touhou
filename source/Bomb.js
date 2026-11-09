@@ -164,7 +164,12 @@ Bomb.prototype._SEAL_DAMAGE = 9 ;
 Bomb.prototype._SEAL_SPLASH = 6 ;
 Bomb.prototype._SEAL_SPLASH_RANGE = 70 ;
 Bomb.prototype._SEAL_SPEED = 7 ;
-Bomb.prototype._SPARK_DAMAGE = 2.6 ;
+Bomb.prototype._SPARK_DAMAGE = 1.7 ;
+// master spark: charge up, fire, then close back down
+Bomb.prototype._SPARK_CHARGE = 45 ;
+Bomb.prototype._SPARK_FIRE = 140 ;
+Bomb.prototype._SPARK_CLOSE = 40 ;
+Bomb.prototype._SPARK_LIFE = 225 ;
 Bomb.prototype._SPARK_HALF_WIDTH = 44 ;
 Bomb.prototype._HEIGHT = 128 ;
 
@@ -317,6 +322,7 @@ Bomb.prototype._sealBurst = function( ) {
       stage.bombDamage( enemies[ i ], this._SEAL_SPLASH, false ) ;
   }
   stage.fx.sealBurst( this.getX( ), this.getY( ), this.indexX ) ;
+  stage.notifySealBurst( ) ;
   this.die( ) ;
 } ;
 
@@ -330,11 +336,14 @@ Bomb.prototype._sparkStep = function( ) {
     return ;
   this.setX( this.fighter.getX( ) ) ;
   this.setY( this.fighter.getY( ) ) ;
-  if( this.count >= this._LIFE ) {
+  if( this.count >= this._SPARK_LIFE ) {
     this.die( ) ;
     return ;
   }
-  if( this.count < 10 || this.count % 4 != 0 )
+  if( this.count == this._SPARK_CHARGE )
+    this.gameState.notifySparkFired( this ) ;
+  var openEnd = this._SPARK_CHARGE + this._SPARK_FIRE + this._SPARK_CLOSE / 2 ;
+  if( this.count < this._SPARK_CHARGE || this.count >= openEnd || this.count % 4 != 0 )
     return ;
 
   var stage = this.gameState ;

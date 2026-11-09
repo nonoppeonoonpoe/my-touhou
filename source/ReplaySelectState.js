@@ -243,13 +243,14 @@ ReplaySelectState.prototype.handleKeyDown = function( e ) {
       this._soundEffect( Game._SE_SELECT ) ;
       break ;
     case 88: // x
+      this._soundEffect( Game._SE_CANCEL ) ;
       this.game.notifyLoadingConclusion( ) ; // TODO: temporal
       break ;
     case 90: // z
       if( this.state != ReplaySelectState._STATE_SELECT )
         break ;
       this.loadReplay( ) ;
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       break ;
   } ;
 } ;

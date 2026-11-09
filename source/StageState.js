@@ -34,6 +34,10 @@ function StageState( game ) {
   this.players = 3 ;
   this.bombs = 2 ;
   this.bombCount = 0 ;
+  this.bombSpan = this._BOMB_SPAN ;
+  this.queuedSounds = { } ;
+  this.lastTimeoutTick = 0 ;
+  this.lastLaserCount = -999 ;
   this.bossSpellCount = 0 ;
   this.pending = 0 ;
   this.bgScale = 1 ;
@@ -452,7 +456,7 @@ StageState.prototype.runStep = function( ) {
         ! this.fighter.isFlagSet( this.fighter._FLAG_UNHITTABLE ) )
       this.clearFlag( this._FLAG_FIGHTER_DEAD ) ;
     if( this.isFlagSet( this._FLAG_BOMB ) &&
-        this.count > this.bombCount + this._BOMB_SPAN ) {
+        this.count > this.bombCount + this.bombSpan ) {
       this.clearFlag( this._FLAG_BOMB ) ;
       this.bombEndCount = this.count ;
     }
@@ -539,11 +543,36 @@ StageState.prototype._updateBGScale = function( ) {
 } ;
 
 
+// sounds that don't have a flag of their own, played once per step
+StageState.prototype._queueSound = function( key ) {
+  this.queuedSounds[ key ] = true ;
+} ;
+
+
+// the boss timer ticks every second once it's down to 10
+StageState.prototype._checkTimeoutTick = function( ) {
+  if( this.oldRules || ! this.isFlagSet( this._FLAG_BOSS_EXIST ) )
+    return ;
+  var boss = this.bossManager.getBoss( ) ;
+  if( ! boss || boss.isVanishingOrEscaping( ) )
+    return ;
+  var secondsLeft = Math.ceil( boss.getTimeLeft( ) ) ;
+  if( secondsLeft > 0 && secondsLeft <= 10 && secondsLeft != this.lastTimeoutTick )
+    this._queueSound( Game._SE_TIMEOUT ) ;
+  this.lastTimeoutTick = secondsLeft ;
+} ;
+
+
 /**
  * TODO: temporal
  */
 StageState.prototype._soundEffectDependsOnFlag = function( ) {
   var game = Game;
+  this._checkTimeoutTick( ) ;
+  for( var soundKey in this.queuedSounds ) {
+    this._soundEffect( Number( soundKey ) ) ;
+  }
+  this.queuedSounds = { } ;
   if( this.isFlagSet( this._FLAG_SE_ENEMY_VANISH ) ) {
     this._soundEffect( game._SE_ENEMY_VANISH ) ;
     this.clearFlag( this._FLAG_SE_ENEMY_VANISH ) ;
@@ -960,6 +989,10 @@ StageState.prototype.reset = function( ) {
   this.players = 3 ;
   this.bombs = 2 ;
   this.bombCount = 0 ;
+  this.bombSpan = this._BOMB_SPAN ;
+  this.queuedSounds = { } ;
+  this.lastTimeoutTick = 0 ;
+  this.lastLaserCount = -999 ;
   this.bossSpellCount = 0 ;
   this.pending = 0 ;
   this.bgScale = 1 ;
@@ -1079,7 +1112,7 @@ StageState.prototype.sendMessageToServer = function(key) {
 
 
 StageState.prototype.notifyFighterGotPowerItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_POWER_ITEM ) ;
   if( this.oldRules ) {
     this.score += 100 ;
     fighter.incrementPower( 1 ) ;
@@ -1102,7 +1135,7 @@ StageState.prototype.notifyFighterGotPowerItem = function( fighter, item ) {
 
 
 StageState.prototype.notifyFighterGotScoreItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_ITEM ) ;
   if( this.oldRules ) {
     this.score += 1000 ;
     return ;
@@ -1129,7 +1162,7 @@ StageState.prototype.getPointItemValue = function( item ) {
 
 
 StageState.prototype.notifyFighterGotStarItem = function( fighter, item ) {
-  this.setFlag( this._FLAG_SE_GRAZE ) ;
+  this._queueSound( Game._SE_ITEM ) ;
   if( item.fromBomb )
     this.score += 100 ;
   else
@@ -1141,6 +1174,8 @@ StageState.prototype.notifyFighterFullPower = function( fighter ) {
   if( this.oldRules )
     return ;
   this.enemyBulletManager.cancelIntoStars( fighter ) ;
+  this._queueSound( Game._SE_FULL_POWER ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.showMessage( 'Full Power Mode!!', 'rgb(255, 220, 120)' ) ;
   this.fx.popWords( fighter.getX( ), fighter.getY( ), 'Full Power!', 'rgb(255, 240, 120)' ) ;
 } ;
@@ -1171,7 +1206,7 @@ StageState.prototype._checkExtend = function( ) {
     this.extendIndex++ ;
     if( this.players < this._MAX_STOCK )
       this.players++ ;
-    this.setFlag( this._FLAG_SE_POWERUP ) ;
+    this._queueSound( Game._SE_EXTEND ) ;
     this.showMessage( 'Extend!!', 'rgb(255, 160, 200)' ) ;
     if( this.fighter )
       this.fx.popWords( this.fighter.getX( ), this.fighter.getY( ), '1UP', 'rgb(255, 160, 200)' ) ;
@@ -1200,6 +1235,12 @@ StageState.prototype.notifyFighterDoShot = function( fighter ) {
 
   this.bulletManager.create( fighter ) ;
   this.setFlag( this._FLAG_SE_SHOT ) ;
+  // marisa's illusion laser hums on top of the shot sound
+  if( this.canonMoves && fighter == this.fighter && fighter.characterIndex == fighter._MARISA &&
+      fighter.isFlagSet( fighter._FLAG_SLOW ) && this.count - this.lastLaserCount >= 50 ) {
+    this.lastLaserCount = this.count ;
+    this._queueSound( Game._SE_LASER ) ;
+  }
 } ;
 
 
@@ -1218,8 +1259,17 @@ StageState.prototype.notifyEnemyDidShot = function( enemy, shot ) {
 StageState.prototype.notifyBulletHit = function( bullet, enemy ) {
   this.effectManager.createDamageEffect( enemy ) ;
   this.fx.hitSpark( bullet.getX( ), bullet.getY( ) ) ;
-  this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
+  this._damageSound( enemy ) ;
   this.score += 10 ;
+} ;
+
+
+// a boss low on health makes the sharper hit sound
+StageState.prototype._damageSound = function( target ) {
+  if( ! this.oldRules && target.maxVital > 0 && target.vital < target.maxVital * 0.2 )
+    this._queueSound( Game._SE_BOSS_DAMAGE ) ;
+  else
+    this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
 } ;
 
 
@@ -1251,6 +1301,9 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   if( ! this.debugFlags.bombs )
     this.bombs-- ;
   this.bombCount = this.count ;
+  this.bombSpan = this._BOMB_SPAN ;
+  if( this.canonMoves && fighter.characterIndex == fighter._MARISA )
+    this.bombSpan = Bomb.prototype._SPARK_LIFE ;
   this.bombName = this._BOMB_NAMES[ fighter.characterIndex ] || this._BOMB_NAMES[ 0 ] ;
   this.fx.flash( 0.8 ) ;
   this.fx.shake( 4, 26 ) ;
@@ -1262,6 +1315,19 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   this.spellCardManager.create( fighter ) ;
   this.bombManager.create( fighter ) ;
   this.setFlag( this._FLAG_SE_POWER_EFFECT ) ;
+} ;
+
+
+// the master spark finishes charging and opens up
+StageState.prototype.notifySparkFired = function( spark ) {
+  this.fx.flash( 0.7 ) ;
+  this.fx.shake( 5, 30 ) ;
+  this._queueSound( Game._SE_SPARK ) ;
+} ;
+
+
+StageState.prototype.notifySealBurst = function( ) {
+  this._queueSound( Game._SE_SLASH ) ;
 } ;
 
 
@@ -1302,6 +1368,7 @@ StageState.prototype._endBossPhase = function( boss ) {
   var spellBase = this._SPELL_BASES[ Math.min( this.stageIndex, this._SPELL_BASES.length - 1 ) ] ;
   var spellBonus = spellBase * ( Math.max( 0, Math.floor( boss.getTimeLeft( ) ) ) + 10 ) ;
   this.score += spellBonus ;
+  this._queueSound( Game._SE_CARD_GET ) ;
   this.showMessage( 'Get Spell Card Bonus!!', 'rgb(255, 230, 120)' ) ;
   this.showMessage( String( spellBonus ), 'rgb(255, 230, 120)' ) ;
 } ;
@@ -1314,7 +1381,8 @@ StageState.prototype.notifyBossVanished = function( boss ) {
   this.fx.shake( 6, 36 ) ;
   this.fx.flash( 0.6 ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
-  this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
+  this._queueSound( Game._SE_BOSS_VANISH ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.spellCard = null ;
 
   this.clearFlag( this._FLAG_BOSS_EXIST ) ;
@@ -1538,7 +1606,7 @@ StageState.prototype.bombDamage = function( target, damage, isBoss ) {
     }
   }
   this.effectManager.createDamageEffect( target ) ;
-  this.setFlag( this._FLAG_SE_ENEMY_DAMAGE ) ;
+  this._damageSound( target ) ;
   this.score += 10 ;
 } ;
 
@@ -1628,6 +1696,7 @@ StageState.prototype.notifyBossMovedNextStage = function( boss ) {
   this.fx.shake( 3, 14 ) ;
   this.clearFlag( this._FLAG_BOSS_SPELLCARD ) ; // Just in case.
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
+  this._queueSound( Game._SE_KIRA ) ;
   this.spellCard = null ;
   this.notifyDoEffect( boss, 'shockwave', {
     'w': 5,
@@ -1850,7 +1919,7 @@ StageState.prototype._displayBombName = function( surface ) {
     return ;
   var bombAge = this.count - this.bombCount ;
   var slide = Math.min( 1, bombAge / 15 ) ;
-  var fade = Math.min( 1, ( this._BOMB_SPAN - bombAge ) / 20 ) ;
+  var fade = Math.min( 1, ( this.bombSpan - bombAge ) / 20 ) ;
   surface.save( ) ;
   surface.globalAlpha = Math.max( 0, fade ) ;
   var bannerX = -260 + 270 * slide ;
@@ -1913,7 +1982,7 @@ StageState.prototype._handlePauseKey = function( e ) {
     this.pauseIndex = 0 ;
     this.pausePage = 'main' ;
     this.game.pauseBGM( true ) ;
-    this._soundEffect( Game._SE_SELECT ) ;
+    this._soundEffect( Game._SE_PAUSE ) ;
     return true ;
   }
 
@@ -1934,6 +2003,7 @@ StageState.prototype._handlePauseKey = function( e ) {
       this._resume( ) ;
       break ;
     case 88: // x
+      this._soundEffect( Game._SE_CANCEL ) ;
       if( this.pausePage == 'debug' ) {
         this.pausePage = 'main' ;
         this.pauseIndex = 0 ;
@@ -1942,7 +2012,7 @@ StageState.prototype._handlePauseKey = function( e ) {
       }
       break ;
     case 90: // z
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       pauseItems[ this.pauseIndex ].act.call( this ) ;
       break ;
   }
@@ -2798,6 +2868,8 @@ ClearState.prototype.init = function( ) {
  */
 ClearState.prototype.runStep = function( ) {
   this.count++ ;
+  if( this.count == 40 && ! this.stage.oldRules )
+    this._soundEffect( Game._SE_BONUS ) ;
 } ;
 
 
@@ -2982,7 +3054,7 @@ GameOverState.prototype.handleKeyDown = function( e ) {
       this.index = ( this.index == 0 ) ? 1 : 0 ;
       break ;
     case 90: // z
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       if( this.index == 0 )
         this.stage.notifyContinue( ) ;
       else

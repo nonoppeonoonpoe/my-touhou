@@ -437,11 +437,11 @@ TitleState.prototype._handlePracticeKey = function( e ) {
       this.soundEffect( Game._SE_SELECT ) ;
       break ;
     case 88: // x
-      this.soundEffect( Game._SE_SELECT ) ;
+      this.soundEffect( Game._SE_CANCEL ) ;
       this.showPractice = false ;
       break ;
     case 90: // z
-      this.soundEffect( Game._SE_SELECT ) ;
+      this.soundEffect( Game._SE_OK ) ;
       this.showPractice = false ;
       this.opening.game.pendingPractice = practiceList[ this.practiceIndex ] ;
       this.opening.notifyTitleConclusion( ) ;
@@ -522,12 +522,12 @@ TitleState.prototype._handleOptionsKey = function( e ) {
       this.soundEffect( Game._SE_SELECT ) ;
       break ;
     case 88: // x
-      this.soundEffect( Game._SE_SELECT ) ;
+      this.soundEffect( Game._SE_CANCEL ) ;
       this.showOptions = false ;
       break ;
     case 90: // z
       if( this.optionIndex >= TitleState._OPTIONS.length ) {
-        this.soundEffect( Game._SE_SELECT ) ;
+        this.soundEffect( Game._SE_OK ) ;
         this.showOptions = false ;
       }
       break ;
@@ -686,7 +686,7 @@ TitleState.prototype.handleKeyDown = function( e ) {
 
   if( this.showControls ) {
     if( e.keyCode == 90 || e.keyCode == 88 ) { // z, x
-      this.soundEffect( Game._SE_SELECT ) ;
+      this.soundEffect( Game._SE_CANCEL ) ;
       this.showControls = false ;
     }
     return ;
@@ -694,7 +694,7 @@ TitleState.prototype.handleKeyDown = function( e ) {
 
   switch( e.keyCode ) {
     case 90: // z
-      this.soundEffect( Game._SE_SELECT ) ;
+      this.soundEffect( Game._SE_OK ) ;
       if( this.state == TitleState._STATE_DISPLAYED ) {
         if( this.index == 0 ) {
           this.opening.game.pendingPractice = null ;

@@ -120,7 +120,7 @@ StaffRollState.prototype.handleKeyDown = function( e ) {
     case 90: // z
       if( ! this.finished )
         return ;
-      this._soundEffect( Game._SE_SELECT ) ;
+      this._soundEffect( Game._SE_OK ) ;
       this.game.notifyQuitStage( true ) ; // TODO: temporal
       break ;
   } ;
