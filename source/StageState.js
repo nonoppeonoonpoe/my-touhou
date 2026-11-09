@@ -212,6 +212,15 @@ StageState.prototype.init = function( params ) {
   this._resetEosdState( ) ;
   this.hiScore = this._loadHiScore( ) ;
 
+  // practice: start at a stage, or right at one spell card
+  this.practice = params.practice || null ;
+  this.practiceEndCount = -1 ;
+  if( this.practice ) {
+    this._moveToStage( this.practice.stage, this.practice.boss ) ;
+    if( this.practice.stage > 0 )
+      this.fighter.incrementPower( 32 * this.practice.stage ) ;
+  }
+
   this._soundBGM( Game._BGM_1 ) ;
   this.sendMessageToServer(GameSocket._STATE_BEGIN_GAME);
 } ;
@@ -324,7 +333,7 @@ StageState.prototype._loadHiScore = function( ) {
 
 // replays don't count for the hiscore
 StageState.prototype._saveHiScore = function( ) {
-  if( this.isFlagSet( this._FLAG_AUTO_PLAY ) || this.cheated || this.score <= this.hiScore )
+  if( this.isFlagSet( this._FLAG_AUTO_PLAY ) || this.cheated || this.practice || this.score <= this.hiScore )
     return ;
   this.hiScore = this.score ;
   try {
@@ -466,6 +475,12 @@ StageState.prototype.runStep = function( ) {
   }
   this.states[ this.state ].runStep( ) ;
   this.backgroundManager.runStep();
+
+  if( this.practiceEndCount >= 0 && this.animationCount - this.practiceEndCount > 120 ) {
+    this.practiceEndCount = -1 ;
+    this.game.notifyQuitStage( ) ;
+    return ;
+  }
   this._runMessages( ) ;
   this.fx.runStep( ) ;
 
@@ -953,7 +968,7 @@ StageState.prototype.putKeyOffRecord = function( record ) {
 
 // only normal single play runs with no cheats get saved
 StageState.prototype.canSaveReplay = function( ) {
-  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && this.playRecords.length > 0 ;
+  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && ! this.practice && this.playRecords.length > 0 ;
 } ;
 
 
@@ -1234,6 +1249,7 @@ StageState.prototype._endBossPhase = function( boss ) {
 
 StageState.prototype.notifyBossVanished = function( boss ) {
   this._endBossPhase( boss ) ;
+  this._endPractice( ) ;
   this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
   this.fx.flash( 0.6 ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
@@ -1348,6 +1364,7 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
 
   if( ! this.oldRules )
     this._dropPower( fighter ) ;
+  this._endPractice( ) ;
 
   if( this.players <= 0 && ! this.debugFlags.lives ) {
     this._saveHiScore( ) ;
@@ -1395,6 +1412,19 @@ StageState.prototype.notifyDoEffect = function( element, type, params ) {
 
 
 StageState.prototype.notifyBossAppeared = function( boss ) {
+  // spell practice skips the boss straight to the picked spell card
+  var practice = this.practice ;
+  if( practice && practice.phase > 0 && this.stageIndex == practice.stage &&
+      this.bossManager.index == practice.boss - 1 ) {
+    boss.index = practice.phase ;
+    boss._initState( ) ;
+  }
+} ;
+
+
+StageState.prototype._endPractice = function( ) {
+  if( this.practice && this.practice.spell && this.practiceEndCount < 0 )
+    this.practiceEndCount = this.animationCount ;
 } ;
 
 
@@ -1452,6 +1482,7 @@ StageState.prototype.notifyBossBeginTalk = function( boss ) {
 
 StageState.prototype.notifyBossMovedNextStage = function( boss ) {
   this._endBossPhase( boss ) ;
+  this._endPractice( ) ;
   this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
   this.clearFlag( this._FLAG_BOSS_SPELLCARD ) ; // Just in case.
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
@@ -1812,6 +1843,11 @@ StageState.prototype._makeJumpItem = function( stageNum, bossNum, label ) {
 StageState.prototype._debugJump = function( stageNum, bossNum ) {
   this.cheated = true ;
   this._restart( ) ;
+  this._moveToStage( stageNum, bossNum ) ;
+} ;
+
+
+StageState.prototype._moveToStage = function( stageNum, bossNum ) {
   for( var i = 0; i < stageNum; i++ ) {
     this.stageIndex++ ;
     this.enemyManager.goNextStage( ) ;
@@ -2486,6 +2522,11 @@ ClearState.prototype.updateDisplay = function( surface ) {
  * TODO: temporal
  */
 ClearState.prototype._toNextStage = function( ) {
+  // stage practice ends with the stage
+  if( this.stage.practice ) {
+    this.stage.game.notifyQuitStage( ) ;
+    return ;
+  }
   this.stage.stageIndex++ ;
   if( this.stage.stageIndex >= __enemiesParams.length ) {
     this.stage.notifyGameClear( ) ;
