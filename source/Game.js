@@ -275,6 +275,7 @@ Game.prototype.soundBGM = function( key ) {
     this.bgms[ i ].currentTime = 0 ;
   }
 
+  this.currentBGM = key ;
   this.bgms[ key ].loop = true ;
   // TODO: temporal
   if( key == Game._BGM_TITLE )
@@ -282,6 +283,16 @@ Game.prototype.soundBGM = function( key ) {
   else
     this.bgms[ key ].volume = 0.2 ;
   this.bgms[ key ].play( ) ;
+} ;
+
+
+Game.prototype.pauseBGM = function( paused ) {
+  if( this.currentBGM === void 0 )
+    return ;
+  if( paused )
+    this.bgms[ this.currentBGM ].pause( ) ;
+  else
+    this.bgms[ this.currentBGM ].play( ) ;
 } ;
 
 

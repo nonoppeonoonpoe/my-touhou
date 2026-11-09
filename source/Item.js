@@ -41,11 +41,21 @@ ItemManager.prototype.createScoreItem = function(enemy) {
 };
 
 
+// items thrown out around a spot, like the power you drop when you die
+ItemManager.prototype.createScattered = function(x, y, type, spread) {
+  var spot = { 'getX': function() { return x; }, 'getY': function() { return y; } };
+  var item = this.factory.create(spot, type, spread);
+  this.addElement(item);
+  return item;
+};
+
+
 /**
  * TODO: temporary
  */
-ItemManager.prototype.createHoming = function(fighter, enemy) {
-  var item = this.factory.create(enemy, this.Item._TYPE_SCORE);
+ItemManager.prototype.createHoming = function(fighter, enemy, type, fromBomb) {
+  var item = this.factory.create(enemy, type === void 0 ? this.Item._TYPE_SCORE : type);
+  item.fromBomb = fromBomb ? true : false;
   item.setTarget(fighter);
   this.addElement(item);
 };
@@ -67,6 +77,8 @@ ItemManager.prototype.notifyCollision = function(id, fighter, item) {
   item.die();
   if(item.isPower())
     this.gameState.notifyFighterGotPowerItem(fighter, item);
+  else if(item.isStar())
+    this.gameState.notifyFighterGotStarItem(fighter, item);
   else
     this.gameState.notifyFighterGotScoreItem(fighter, item);
 };
@@ -103,10 +115,15 @@ ItemFactory.prototype._initFreelist = function() {
 /**
  * TODO: temporal
  */
-ItemFactory.prototype.create = function(element, type) {
+ItemFactory.prototype.create = function(element, type, spread) {
   var params = this._PARAMS;
   params.x = element.getX();
   params.y = element.getY();
+  params.v.theta = 270;
+  if(spread) {
+    params.x += (__randomizer.random() - 0.5) * spread;
+    params.v.theta = 270 + (__randomizer.random() - 0.5) * 60;
+  }
   var item = this.freelist.get();
   item.init(params, this._getImage(type), type);
   return item;
@@ -184,6 +201,11 @@ Item.prototype._HOMING_R = 10 ;
 
 Item.prototype._TYPE_POWER = 0 ;
 Item.prototype._TYPE_SCORE = 1 ;
+Item.prototype._TYPE_STAR = 2 ;
+Item.prototype._TYPE_BIG_POWER = 3 ;
+
+// items stop speeding up once they fall this fast
+Item.prototype._MAX_FALL = 3 ;
 
 
 __copyParentMethod(Item, Element, 'init');
@@ -196,6 +218,7 @@ Item.prototype.init = function(params, image, type) {
   this.collisionWidth = this._COLLISION_WIDTH;
   this.collisionHeight = this._COLLISION_HEIGHT;
   this.target = null;
+  this.fromBomb = false;
   this._initView();
 };
 
@@ -213,6 +236,11 @@ Item.prototype.runStep = function() {
   if(this.target && this.count % this._HOMING_SPAN == 0)
     this._calculateHomingPoint();
   this.Element_runStep();
+  // r goes negative while falling (theta 270 is up)
+  if(! this.target && ! this.gameState.oldRules && this.vector && this.vector.r < -this._MAX_FALL) {
+    this.vector.r = -this._MAX_FALL;
+    this.vector.ra = 0;
+  }
 };
 
 
@@ -222,7 +250,22 @@ Item.prototype.setTarget = function( element ) {
 
 
 Item.prototype.isPower = function() {
-  return this.type == this._TYPE_POWER;
+  return this.type == this._TYPE_POWER || this.type == this._TYPE_BIG_POWER;
+};
+
+
+Item.prototype.isBigPower = function() {
+  return this.type == this._TYPE_BIG_POWER;
+};
+
+
+Item.prototype.isStar = function() {
+  return this.type == this._TYPE_STAR;
+};
+
+
+Item.prototype.isHoming = function() {
+  return this.target ? true : false;
 };
 
 

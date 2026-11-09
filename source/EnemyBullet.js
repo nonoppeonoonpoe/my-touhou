@@ -142,7 +142,7 @@ EnemyBulletManager.prototype.clearReserved = function( enemy ) {
 
 __copyParentMethod(EnemyBulletManager, ElementManager, 'checkCollisionWith');
 EnemyBulletManager.prototype.checkCollisionWith = function(fighter) {
-  if(fighter.isFlagSet(fighter._FLAG_UNHITTABLE))
+  if(! this.gameState.canBeHit(fighter))
     return;
   this.ElementManager_checkCollisionWith(null, fighter, this, true);
 };
@@ -155,8 +155,7 @@ EnemyBulletManager.prototype.checkCollisionWithFighters = function(fighters) {
 };
 
 EnemyBulletManager.prototype.notifyCollision = function(id, fighter, bullet) {
-  fighter.die();
-  this.gameState.notifyFighterDead(fighter, bullet);
+  this.gameState.notifyFighterHit(fighter, bullet);
 };
 
 
@@ -185,7 +184,29 @@ EnemyBulletManager.prototype.notifyGraze = function(id, fighter,
 EnemyBulletManager.prototype.bomb = function( fighter ) {
   for( var i = 0; i < this.elements.length; i++ ) {
     this.elements[ i ].die( ) ;
-    this.gameState.notifyBeScoreItem(fighter, this.elements[i]);
+    this.gameState.notifyBeScoreItem(fighter, this.elements[i], true);
+  }
+} ;
+
+
+// bullets still flying (not dead yet), for the bullet bonus
+EnemyBulletManager.prototype.countAlive = function( ) {
+  var aliveNum = 0 ;
+  for( var i = 0; i < this.elements.length; i++ ) {
+    if( ! this.elements[ i ].isDead( ) )
+      aliveNum++ ;
+  }
+  return aliveNum ;
+} ;
+
+
+// turns every bullet into a star item, but the enemies keep shooting
+EnemyBulletManager.prototype.cancelIntoStars = function( fighter ) {
+  for( var i = 0; i < this.elements.length; i++ ) {
+    if( this.elements[ i ].isDead( ) )
+      continue ;
+    this.elements[ i ].die( ) ;
+    this.gameState.notifyBeScoreItem(fighter, this.elements[i], false);
   }
 } ;
 
@@ -374,6 +395,21 @@ EnemyBullet.prototype.init = function(params, image, enemy, params2) {
 EnemyBullet.prototype._generateView = function() {
   return new EnemyBulletView(this);
 };
+
+
+// round hit check against the player's small hitbox
+__copyParentMethod(EnemyBullet, Element, 'checkCollision');
+EnemyBullet.prototype.checkCollision = function( e ) {
+  if( this.gameState.oldRules || ! e.hitRadius )
+    return this.Element_checkCollision( e ) ;
+  if( this.isDead( ) )
+    return false ;
+  var bulletRadius = Math.min( this.collisionWidth, this.collisionHeight ) / 2 ;
+  var dx = this.getCenterX( ) - e.getCenterX( ) ;
+  var dy = this.getCenterY( ) - e.getCenterY( ) ;
+  var hitDistance = bulletRadius + e.hitRadius ;
+  return dx * dx + dy * dy < hitDistance * hitDistance ;
+} ;
 
 
 EnemyBullet.prototype.display = function( surface ) {

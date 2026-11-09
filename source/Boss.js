@@ -169,7 +169,10 @@ BossManager.prototype.existBoss = function() {
  */
 __copyParentMethod(BossManager, ElementManager, 'checkCollisionWith');
 BossManager.prototype.checkCollisionWith = function(fighter) {
-  this.ElementManager_checkCollisionWith(null, fighter, this);
+  // the old code had no unhittable check here, old replays keep that
+  if(! this.gameState.oldRules && ! this.gameState.canBeHit(fighter))
+    return;
+  this.ElementManager_checkCollisionWith(null, fighter, this, true);
 };
 
 
@@ -181,8 +184,7 @@ BossManager.prototype.checkCollisionWithFighters = function(fighters) {
 
 
 BossManager.prototype.notifyCollision = function(id, fighter, boss) {
-  fighter.die();
-  this.gameState.notifyFighterDead(fighter, boss);
+  this.gameState.notifyFighterHit(fighter, boss);
 };
 
 
@@ -336,6 +338,10 @@ Boss.prototype._APPEAR_WAIT_COUNT = 50 ;
 
 Boss.prototype._VANISH_COUNT = 100;
 
+// seconds each attack lasts, a phase can set its own with 'time'
+Boss.prototype._NORMAL_TIME = 40;
+Boss.prototype._SPELL_TIME = 45;
+
 Boss.prototype._TYPE_RUMIA     = 0;
 Boss.prototype._TYPE_DAIYOUSEI = 1;
 Boss.prototype._TYPE_CHIRNO    = 2;
@@ -428,6 +434,14 @@ Boss.prototype.runStep = function() {
   this._doEffect();
 
   this.Element_runStep();
+
+  // running out of time ends the attack with no bonus
+  if(! this.gameState.oldRules && ! this.vanishing && ! this.escaping &&
+     ! this.isFlagSet(this._FLAG_UNHITTABLE) && this.vital > 0 &&
+     this.getTimeLeft() <= 0) {
+    this.timedOut = true;
+    this.vital = 0;
+  }
 
   // for animation
   this._checkState();
@@ -562,6 +576,10 @@ Boss.prototype._initState = function( ) {
   this.maxVital = this.vital ;
   this.spellCard = this.params[ this.index ].spellCard ;
   this.effects = this.params[ this.index ].e ;
+  this.timedOut = false ;
+  this.phaseTime = this.params[ this.index ].time ;
+  if( ! this.phaseTime )
+    this.phaseTime = this.spellCard ? this._SPELL_TIME : this._NORMAL_TIME ;
   this.setFlag( this._FLAG_UNHITTABLE ) ;
   this.gameState.notifyBossStageChanged( this ) ;
 
@@ -676,6 +694,26 @@ Boss.prototype.checkLoss = function() {
     return value;
 
   return this.overVanishing();
+};
+
+
+// seconds left on the current attack
+Boss.prototype.getTimeLeft = function() {
+  var startCount = this._APPEAR_COUNT + this._APPEAR_WAIT_COUNT;
+  if(this.count < startCount)
+    return this.phaseTime;
+  return this.phaseTime - (this.count - startCount) / 60;
+};
+
+
+// spell cards left, counting the one going on now
+Boss.prototype.getSpellsLeft = function() {
+  var spellsLeft = 0;
+  for(var i = this.index; i < this.params.length; i++) {
+    if(this.params[i].spellCard)
+      spellsLeft++;
+  }
+  return spellsLeft;
 };
 
 
