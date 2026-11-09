@@ -154,7 +154,7 @@ FighterOptionView.prototype._getElementX = function() {
 
 __copyParentMethod(FighterOptionView, ElementView, '_getElementY');
 FighterOptionView.prototype._getElementY = function() {
-  return this.ElementView_getElementY() + this.element.fighter.getY();
+  return this.ElementView_getElementY() + this.element.fighter.getDrawY();
 };
 
 

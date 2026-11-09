@@ -210,7 +210,8 @@ TitleState._OPTIONS = [
   [ 'music', 'Music volume', 0, 10 ],
   [ 'sound', 'Sound volume', 0, 10 ],
   [ 'lives', 'Starting lives', 0, 8 ],
-  [ 'bombs', 'Starting bombs', 0, 8 ]
+  [ 'bombs', 'Starting bombs', 0, 8 ],
+  [ 'shake', 'Screen shake', 0, 1 ]
 ] ;
 
 TitleState._CONTROLS = [
@@ -227,6 +228,10 @@ TitleState._HEIGHT = 960 ;
 
 TitleState._GLOBALALPHA_SPAN = 100 ;
 
+TitleState._MENU_TOP = 270 ;
+TitleState._MENU_GAP = 36 ;
+TitleState._PANEL_SPAN = 14 ;
+
 TitleState._STATE_DISPLAYING = 0x0 ;
 TitleState._STATE_DISPLAYED  = 0x1 ;
 
@@ -240,6 +245,13 @@ TitleState.prototype.init = function( ) {
   this.showPractice = false ;
   this.practiceIndex = 0 ;
   this.state = TitleState._STATE_DISPLAYING ;
+  this.barY = TitleState._MENU_TOP ;
+  this.itemShifts = [ ] ;
+  for( var i = 0; i < TitleState._MENU.length; i++ )
+    this.itemShifts[ i ] = 0 ;
+  this.sparkles = [ ] ;
+  this.panelCount = 0 ;
+  this.panelRowY = 0 ;
   this.soundBGM( Game._BGM_TITLE ) ;
 } ;
 
@@ -250,17 +262,103 @@ TitleState.prototype.runStep = function( ) {
     this.state = TitleState._STATE_DISPLAYED ;
 
   this.count++ ;
+  this.panelCount++ ;
+  this._moveMenuBar( ) ;
+  this._moveSparkles( ) ;
+} ;
+
+
+// the highlight bar and the picked item glide instead of jumping
+TitleState.prototype._moveMenuBar = function( ) {
+  var targetY = TitleState._MENU_TOP + this.index * TitleState._MENU_GAP ;
+  this.barY += ( targetY - this.barY ) * 0.25 ;
+  for( var i = 0; i < TitleState._MENU.length; i++ ) {
+    var targetShift = i == this.index ? 12 : 0 ;
+    this.itemShifts[ i ] += ( targetShift - this.itemShifts[ i ] ) * 0.25 ;
+  }
+  var panelTargetY = this._getPanelRowY( ) ;
+  this.panelRowY += ( panelTargetY - this.panelRowY ) * 0.3 ;
+} ;
+
+
+TitleState.prototype._moveSparkles = function( ) {
+  if( this.count > TitleState._GLOBALALPHA_SPAN && Math.random( ) < 0.15 ) {
+    this.sparkles.push( { 'x': Math.random( ) * this.opening.getWidth( ),
+                          'y': this.opening.getHeight( ) - 50,
+                          'speed': 0.4 + Math.random( ) * 0.8,
+                          'size': 1 + Math.random( ) * 2,
+                          'phase': Math.random( ) * Math.PI * 2,
+                          'life': 0 } ) ;
+  }
+  for( var i = this.sparkles.length - 1; i >= 0; i-- ) {
+    var sparkle = this.sparkles[ i ] ;
+    sparkle.life++ ;
+    sparkle.y -= sparkle.speed ;
+    sparkle.x += Math.sin( sparkle.phase + sparkle.life / 30 ) * 0.3 ;
+    if( sparkle.y < 50 )
+      this.sparkles.splice( i, 1 ) ;
+  }
 } ;
 
 
 TitleState.prototype.updateDisplay = function( surface ) {
   this._displayBG( surface ) ;
   this._displayImage( surface ) ;
+  this._displaySparkles( surface ) ;
   this._displayMessage( surface ) ;
   this._displayPressKey( surface ) ;
   this._displayControls( surface ) ;
   this._displayOptions( surface ) ;
   this._displayPractice( surface ) ;
+} ;
+
+
+// the dark panel behind practice/options/controls, it pops open
+TitleState.prototype._openPanel = function( surface ) {
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
+  var openTime = __animTime( this.panelCount, 0, TitleState._PANEL_SPAN ) ;
+  this.panelAlpha = __easeOut( openTime ) ;
+  surface.globalAlpha = 0.85 * this.panelAlpha ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, width, height ) ;
+  var panelScale = 0.9 + 0.1 * __easeBack( openTime ) ;
+  surface.translate( width / 2, height / 2 ) ;
+  surface.scale( panelScale, panelScale ) ;
+  surface.translate( -width / 2, -height / 2 ) ;
+  surface.globalAlpha = this.panelAlpha ;
+} ;
+
+
+TitleState.prototype._showPanel = function( ) {
+  this.panelCount = 0 ;
+  this.panelRowY = this._getPanelRowY( ) ;
+} ;
+
+
+TitleState.prototype._getPanelRowY = function( ) {
+  if( this.showOptions )
+    return 190 + this.optionIndex * 40 ;
+  if( this.showPractice ) {
+    var listSize = this._getPracticeList( ).length ;
+    var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, listSize - 9 ) ) ;
+    return 150 + ( this.practiceIndex - firstRow ) * 30 ;
+  }
+  return 0 ;
+} ;
+
+
+// a soft bar behind the picked row of a panel
+TitleState.prototype._drawPanelBar = function( surface, barWidth, barHeight ) {
+  var width = this.opening.getWidth( ) ;
+  var barGradient = surface.createLinearGradient( width / 2 - barWidth / 2, 0, width / 2 + barWidth / 2, 0 ) ;
+  barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0 )' ) ;
+  barGradient.addColorStop( 0.5, 'rgba( 220, 60, 80, 0.45 )' ) ;
+  barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
+  surface.save( ) ;
+  surface.fillStyle = barGradient ;
+  surface.fillRect( width / 2 - barWidth / 2, this.panelRowY - barHeight / 2, barWidth, barHeight ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -295,10 +393,8 @@ TitleState.prototype._displayPractice = function( surface ) {
   var height = this.opening.getHeight( ) ;
   var practiceList = this._getPracticeList( ) ;
   surface.save( ) ;
-  surface.globalAlpha = 0.85 ;
-  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.fillRect( 0, 0, width, height ) ;
-  surface.globalAlpha = 1.0 ;
+  this._openPanel( surface ) ;
+  this._drawPanelBar( surface, 520, 28 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textBaseline = 'middle' ;
 
@@ -312,17 +408,17 @@ TitleState.prototype._displayPractice = function( surface ) {
   var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, practiceList.length - shownRows ) ) ;
   surface.font = "18px 'Comic Sans MS'" ;
   for( var i = firstRow; i < practiceList.length && i < firstRow + shownRows; i++ ) {
-    surface.globalAlpha = ( i == this.practiceIndex ) ? 1.0 : 0.4 ;
+    surface.globalAlpha = ( ( i == this.practiceIndex ) ? 1.0 : 0.4 ) * this.panelAlpha ;
     surface.fillText( practiceList[ i ].label, width / 2, 150 + ( i - firstRow ) * 30 ) ;
   }
-  surface.globalAlpha = 0.6 ;
+  surface.globalAlpha = 0.6 * this.panelAlpha ;
   if( firstRow > 0 )
     surface.fillText( '...', width / 2, 128 ) ;
   if( firstRow + shownRows < practiceList.length )
     surface.fillText( '...', width / 2, 150 + shownRows * 30 - 8 ) ;
 
   surface.font = "16px 'Comic Sans MS'" ;
-  surface.globalAlpha = 0.6 ;
+  surface.globalAlpha = 0.6 * this.panelAlpha ;
   surface.fillText( 'Z to play, X to go back', width / 2, height - 45 ) ;
   surface.restore( ) ;
 } ;
@@ -361,10 +457,8 @@ TitleState.prototype._displayOptions = function( surface ) {
   var height = this.opening.getHeight( ) ;
   var options = this.opening.game.options ;
   surface.save( ) ;
-  surface.globalAlpha = 0.85 ;
-  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.fillRect( 0, 0, width, height ) ;
-  surface.globalAlpha = 1.0 ;
+  this._openPanel( surface ) ;
+  this._drawPanelBar( surface, 460, 34 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textBaseline = 'middle' ;
 
@@ -375,8 +469,8 @@ TitleState.prototype._displayOptions = function( surface ) {
 
   surface.font = "20px 'Comic Sans MS'" ;
   for( var i = 0; i <= TitleState._OPTIONS.length; i++ ) {
-    var lineY = 190 + i * 44 ;
-    surface.globalAlpha = ( i == this.optionIndex ) ? 1.0 : 0.4 ;
+    var lineY = 190 + i * 40 ;
+    surface.globalAlpha = ( ( i == this.optionIndex ) ? 1.0 : 0.4 ) * this.panelAlpha ;
     if( i == TitleState._OPTIONS.length ) {
       surface.textAlign = 'center' ;
       surface.fillText( 'Back', width / 2, lineY ) ;
@@ -386,12 +480,13 @@ TitleState.prototype._displayOptions = function( surface ) {
     surface.textAlign = 'right' ;
     surface.fillText( row[ 1 ], width / 2 + 20, lineY ) ;
     surface.textAlign = 'left' ;
-    surface.fillText( '<  ' + options[ row[ 0 ] ] + '  >', width / 2 + 50, lineY ) ;
+    var valueText = row[ 0 ] == 'shake' ? ( options.shake ? 'On' : 'Off' ) : options[ row[ 0 ] ] ;
+    surface.fillText( '<  ' + valueText + '  >', width / 2 + 50, lineY ) ;
   }
 
   surface.font = "16px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
-  surface.globalAlpha = 0.6 ;
+  surface.globalAlpha = 0.6 * this.panelAlpha ;
   surface.fillText( 'Left and right change a setting, X goes back', width / 2, height - 45 ) ;
   surface.restore( ) ;
 } ;
@@ -441,10 +536,7 @@ TitleState.prototype._displayControls = function( surface ) {
   var width = this.opening.getWidth( ) ;
   var height = this.opening.getHeight( ) ;
   surface.save( ) ;
-  surface.globalAlpha = 0.85 ;
-  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.fillRect( 0, 0, width, height ) ;
-  surface.globalAlpha = 1.0 ;
+  this._openPanel( surface ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textBaseline = 'middle' ;
 
@@ -464,7 +556,7 @@ TitleState.prototype._displayControls = function( surface ) {
 
   surface.font = "16px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
-  surface.globalAlpha = 0.6 ;
+  surface.globalAlpha = 0.6 * this.panelAlpha ;
   surface.fillText( 'Press Z or X to go back', width / 2, height - 80 ) ;
   surface.restore( ) ;
 } ;
@@ -481,62 +573,102 @@ TitleState.prototype._displayBG = function( surface ) {
 
 
 TitleState.prototype._displayImage = function( surface ) {
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
   surface.save( ) ;
+  surface.globalAlpha = __easeInOut( this.count / TitleState._GLOBALALPHA_SPAN ) ;
 
-  if( this.count < TitleState._GLOBALALPHA_SPAN )
-    surface.globalAlpha = this.count / TitleState._GLOBALALPHA_SPAN ;
-  else
-    surface.globalAlpha = 1.0 ;
-
+  // the picture slowly drifts and breathes
+  var zoom = 1.04 + 0.02 * Math.sin( this.count / 240 ) ;
+  var driftX = 6 * Math.sin( this.count / 400 ) ;
+  var driftY = 3 * Math.sin( this.count / 330 ) ;
+  surface.translate( width / 2 + driftX, height / 2 + driftY ) ;
+  surface.scale( zoom, zoom ) ;
   surface.drawImage( this.getImage( Game._IMG_TITLE_BG ),
-                     0,                 
+                     0,
                      0,
                      TitleState._WIDTH,
                      TitleState._HEIGHT,
-                     0,
-                     0,
-                     this.opening.getWidth( ),
-                     this.opening.getHeight( ) ) ;
+                     -width / 2,
+                     -height / 2,
+                     width,
+                     height ) ;
   surface.restore( ) ;
 } ;
 
 
+TitleState.prototype._displaySparkles = function( surface ) {
+  surface.save( ) ;
+  surface.fillStyle = 'rgb( 230, 90, 120 )' ;
+  for( var i = 0; i < this.sparkles.length; i++ ) {
+    var sparkle = this.sparkles[ i ] ;
+    var fadeIn = __clamp01( sparkle.life / 30 ) ;
+    var fadeOut = __clamp01( ( sparkle.y - 50 ) / 80 ) ;
+    var twinkle = 0.6 + 0.4 * Math.sin( sparkle.phase + sparkle.life / 8 ) ;
+    surface.globalAlpha = 0.5 * fadeIn * fadeOut * twinkle ;
+    surface.beginPath( ) ;
+    surface.arc( sparkle.x, sparkle.y, sparkle.size, 0, Math.PI * 2 ) ;
+    surface.fill( ) ;
+  }
+  surface.restore( ) ;
+} ;
+
+
+// the name drops in from above with a little bounce
 TitleState.prototype._displayMessage = function( surface ) {
-  if( this.count < TitleState._GLOBALALPHA_SPAN )
+  var dropTime = __animTime( this.count, TitleState._GLOBALALPHA_SPAN, 36 ) ;
+  if( dropTime <= 0 )
     return ;
 
   surface.save( ) ;
-  surface.font = "24px 'Comic Sans MS'" ;
+  surface.font = "bold 34px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
-  surface.textBaseAlign = 'middle' ;
+  surface.textBaseline = 'middle' ;
+  surface.globalAlpha = __easeOut( dropTime ) ;
+  var logoY = 192 - 50 * ( 1 - __easeBack( dropTime ) ) ;
+  surface.fillStyle = 'rgba( 200, 30, 40, 0.35 )' ;
+  surface.fillText( 'JSTouhou', 122, logoY + 2 ) ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillText( 'JSTouhou', 120, logoY ) ;
 
-  if( this.count - TitleState._GLOBALALPHA_SPAN < TitleState._GLOBALALPHA_SPAN )
-    surface.globalAlpha = ( this.count - TitleState._GLOBALALPHA_SPAN ) / TitleState._GLOBALALPHA_SPAN ;
-  else
-    surface.globalAlpha = 1.0 ;
-
-  surface.fillText( 'JSTouhou', 120, 200 ) ;
+  var lineTime = __easeOut( __animTime( this.count, TitleState._GLOBALALPHA_SPAN + 24, 30 ) ) ;
+  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+  surface.fillRect( 120 - 70 * lineTime, logoY + 24, 140 * lineTime, 2 ) ;
   surface.restore( ) ;
 } ;
 
 
+// menu items slide in one at a time, a bar glides to the picked one
 TitleState.prototype._displayPressKey = function( surface ) {
-  if( this.count < TitleState._GLOBALALPHA_SPAN * 2 )
+  var menuStart = TitleState._GLOBALALPHA_SPAN + 40 ;
+  if( this.count < menuStart )
     return ;
 
   surface.save( ) ;
+  var barAlpha = __easeOut( __animTime( this.count, menuStart + 40, 16 ) ) ;
+  if( barAlpha > 0 ) {
+    var barGradient = surface.createLinearGradient( 20, 0, 240, 0 ) ;
+    barGradient.addColorStop( 0, 'rgba( 200, 30, 40, 0 )' ) ;
+    barGradient.addColorStop( 0.5, 'rgba( 200, 30, 40, 0.28 )' ) ;
+    barGradient.addColorStop( 1, 'rgba( 200, 30, 40, 0 )' ) ;
+    surface.globalAlpha = barAlpha ;
+    surface.fillStyle = barGradient ;
+    surface.fillRect( 20, this.barY - 25, 220, 32 ) ;
+    surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+    surface.fillRect( 46, this.barY - 15 + 4 * Math.sin( this.count / 12 ), 3, 12 ) ;
+  }
+
   surface.font = "24px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
-  surface.textBaseAlign = 'middle' ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-
   for( var i = 0; i < TitleState._MENU.length; i++ ) {
-    if( this.index == i )
-      surface.globalAlpha = 1.0 ;
-    else
-      surface.globalAlpha = 0.2 ;
-    surface.fillText( TitleState._MENU[ i ], 120, 270 + i * 36 ) ;
+    var slideTime = __animTime( this.count, menuStart + i * 8, 22 ) ;
+    if( slideTime <= 0 )
+      continue ;
+    var slideX = -70 * ( 1 - __easeOut( slideTime ) ) ;
+    surface.globalAlpha = ( this.index == i ? 1.0 : 0.25 ) * __easeOut( slideTime ) ;
+    surface.fillText( TitleState._MENU[ i ], 120 + slideX + this.itemShifts[ i ],
+                      TitleState._MENU_TOP + i * TitleState._MENU_GAP ) ;
   }
 
   surface.restore( ) ;
@@ -572,13 +704,17 @@ TitleState.prototype.handleKeyDown = function( e ) {
         } else if( this.index == 1 ) {
           this.showPractice = true ;
           this.practiceIndex = 0 ;
+          this._showPanel( ) ;
         } else if( this.index == 2 )
           this.opening.notifyReplaySelectBegin( ) ;
         else if( this.index == 3 ) {
           this.showOptions = true ;
           this.optionIndex = 0 ;
-        } else
+          this._showPanel( ) ;
+        } else {
           this.showControls = true ;
+          this._showPanel( ) ;
+        }
       } else {
         this.state = TitleState._STATE_DISPLAYED ;
         this.count = TitleState._GLOBALALPHA_SPAN * 2 ; // TODO: temporal

@@ -330,7 +330,7 @@ Game.prototype.applyMusicVolume = function( ) {
  * lives are the spare lives you start with and bombs refill to that on respawn.
  */
 Game._OPTIONS_KEY = 'jstouhou_options' ;
-Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3 } ;
+Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3, 'shake': 1 } ;
 
 Game.prototype._loadOptions = function( ) {
   var options = { } ;
@@ -520,6 +520,8 @@ Game.prototype._runStep = function( ) {
 
 
 Game.prototype._runOneStep = function( ) {
+  if( this.fadeCount > 0 )
+    this.fadeCount-- ;
   this.states[ this.state ].runStep( ) ;
   this._calculateFps( ) ;
 
@@ -534,8 +536,21 @@ Game.prototype._runOneStep = function( ) {
 
 Game.prototype._drawStep = function( ) {
   this.states[ this.state ].updateDisplay( this.surface ) ;
+  this._displayFade( this.surface ) ;
   this._displayFps( this.surface ) ;
   this._displayOnlineState(this.surface);
+} ;
+
+
+// every screen change comes in from black
+Game.prototype._displayFade = function( surface ) {
+  if( ! this.fadeCount )
+    return ;
+  surface.save( ) ;
+  surface.globalAlpha = __easeInOut( this.fadeCount / Game._FADE_SPAN ) ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, this.width, this.height ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -694,7 +709,11 @@ Game.prototype.notifyGameClear = function( ) {
 } ;
 
 
+Game._FADE_SPAN = 18 ;
+
 Game.prototype._changeState = function( state, params ) {
+  if( state != this.state )
+    this.fadeCount = Game._FADE_SPAN ;
   this.state = state ;
   this.states[ this.state ].init( params ) ;
 } ;

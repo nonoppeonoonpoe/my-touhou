@@ -11,6 +11,20 @@ function StageFx( stage ) {
   this.darkX = 0 ;
   this.darkY = 0 ;
   this.darkCount = 0 ;
+  this.shakeTime = 0 ;
+  this.shakeSpan = 1 ;
+  this.shakePower = 0 ;
+  this.shakeX = 0 ;
+  this.shakeY = 0 ;
+  this.bgDark = 1.0 ;
+  this.barFill = 0 ;
+  this.barLag = 0 ;
+  this.circleAlpha = 0 ;
+  this.circleSpin = 0 ;
+  this.circleX = 0 ;
+  this.circleY = 0 ;
+  this.circleSpell = 0 ;
+  this.focusAlpha = 0 ;
 }
 
 StageFx.prototype._MAX_PARTS = 400 ;
@@ -20,6 +34,43 @@ StageFx.prototype.reset = function( ) {
   this.parts.length = 0 ;
   this.flashAlpha = 0 ;
   this.darkRadius = 0 ;
+  this.shakeTime = 0 ;
+  this.shakeX = 0 ;
+  this.shakeY = 0 ;
+  this.bgDark = 1.0 ;
+  this.barFill = 0 ;
+  this.barLag = 0 ;
+  this.circleAlpha = 0 ;
+  this.focusAlpha = 0 ;
+} ;
+
+
+// the screen shake can be turned off in options
+StageFx.prototype.shake = function( power, frames ) {
+  var options = this.stage.game.options ;
+  if( options && options.shake === 0 )
+    return ;
+  if( power < this.shakePower * this.shakeTime / this.shakeSpan )
+    return ;
+  this.shakePower = power ;
+  this.shakeTime = frames ;
+  this.shakeSpan = frames ;
+} ;
+
+
+// a boss going down: rings one after another and lots of sparks
+StageFx.prototype.bossBurst = function( x, y ) {
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 4, 'to': 140, 'life': 50, 'color': 'rgb(255, 255, 255)', 'width': 6 } ) ;
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 4, 'to': 100, 'life': 40, 'color': 'rgb(255, 150, 170)', 'width': 4, 'delay': 6 } ) ;
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 4, 'to': 70, 'life': 34, 'color': 'rgb(255, 230, 140)', 'width': 3, 'delay': 12 } ) ;
+  this._addSparks( x, y, 40, 7, 55, 'rgb(255, 255, 230)', 3 ) ;
+  this._addSparks( x, y, 20, 4, 45, 'rgb(255, 160, 190)', 2 ) ;
+} ;
+
+
+// bouncy words over the player, like power up
+StageFx.prototype.popWords = function( x, y, text, color ) {
+  this._add( { 'kind': 'pop', 'x': x, 'y': y - 30, 'text': text, 'life': 60, 'color': color } ) ;
 } ;
 
 
@@ -90,6 +141,13 @@ StageFx.prototype.flash = function( strength ) {
 
 StageFx.prototype.runStep = function( ) {
   this._updateDarkness( ) ;
+  this._updateShake( ) ;
+  this._updateBoss( ) ;
+  this._updateFocus( ) ;
+  var darkTarget = ( this.stage.isFlagSet( this.stage._FLAG_BOMB ) || this.stage.spellCard ) ? 0.4 : 1.0 ;
+  this.bgDark += ( darkTarget - this.bgDark ) * 0.08 ;
+  if( Math.abs( darkTarget - this.bgDark ) < 0.01 )
+    this.bgDark = darkTarget ;
   var aliveParts = 0 ;
   for( var i = 0; i < this.parts.length; i++ ) {
     var part = this.parts[ i ] ;
@@ -101,6 +159,8 @@ StageFx.prototype.runStep = function( ) {
       part.vy *= 0.92 ;
     } else if( part.kind == 'text' ) {
       part.y -= 0.6 ;
+    } else if( part.kind == 'pop' ) {
+      part.y -= 0.3 ;
     }
     if( part.age < part.life )
       this.parts[ aliveParts++ ] = part ;
@@ -122,6 +182,7 @@ StageFx.prototype.draw = function( surface ) {
 
   // positions only line up with the normal top down view
   if( ! this.stage.viewFromFighter ) {
+    this._drawBossCircle( surface ) ;
     this._drawDarkness( surface ) ;
     this._drawSparks( surface ) ;
     for( var i = 0; i < this.parts.length; i++ )
@@ -138,7 +199,9 @@ StageFx.prototype.draw = function( surface ) {
 
 
 StageFx.prototype._drawPart = function( surface, part ) {
-  var done = part.age / part.life ;
+  if( part.delay && part.age < part.delay )
+    return ;
+  var done = part.delay ? ( part.age - part.delay ) / ( part.life - part.delay ) : part.age / part.life ;
   if( part.kind == 'spark' ) {
     surface.globalAlpha = 1 - done ;
     surface.fillStyle = part.color ;
@@ -171,7 +234,138 @@ StageFx.prototype._drawPart = function( surface, part ) {
     surface.fillText( part.text, part.x + 1, part.y + 1 ) ;
     surface.fillStyle = part.color ;
     surface.fillText( part.text, part.x, part.y ) ;
+  } else if( part.kind == 'pop' ) {
+    var popScale = 0.3 + 0.7 * __easeBack( part.age / 14 ) ;
+    surface.save( ) ;
+    surface.globalAlpha = done > 0.7 ? ( 1 - done ) / 0.3 : 1 ;
+    surface.translate( part.x, part.y ) ;
+    surface.scale( popScale, popScale ) ;
+    surface.font = 'italic bold 15px Georgia, serif' ;
+    surface.textAlign = 'center' ;
+    surface.lineJoin = 'round' ;
+    surface.lineWidth = 4 ;
+    surface.strokeStyle = 'rgba(0, 0, 0, 0.8)' ;
+    surface.strokeText( part.text, 0, 0 ) ;
+    surface.fillStyle = part.color ;
+    surface.fillText( part.text, 0, 0 ) ;
+    surface.restore( ) ;
   }
+} ;
+
+
+StageFx.prototype._updateShake = function( ) {
+  if( this.shakeTime <= 0 ) {
+    this.shakeX = 0 ;
+    this.shakeY = 0 ;
+    return ;
+  }
+  var shakeLeft = this.shakeTime / this.shakeSpan ;
+  this.shakeX = ( Math.random( ) * 2 - 1 ) * this.shakePower * shakeLeft ;
+  this.shakeY = ( Math.random( ) * 2 - 1 ) * this.shakePower * shakeLeft ;
+  this.shakeTime-- ;
+} ;
+
+
+/*
+ * the boss hp bar fills up at the start of each attack, and a pink bar
+ * trails behind when it drops. the magic circle follows the boss
+ */
+StageFx.prototype._updateBoss = function( ) {
+  var stage = this.stage ;
+  var bossManager = stage.bossManager ;
+  var boss = bossManager && stage.isFlagSet( stage._FLAG_BOSS_EXIST ) ? bossManager.getBoss( ) : null ;
+  var circleTarget = 0 ;
+  if( boss && boss.maxVital ) {
+    var vitalPart = Math.max( 0, boss.vital ) / boss.maxVital ;
+    if( vitalPart > this.barFill )
+      this.barFill = Math.min( vitalPart, this.barFill + 0.025 ) ;
+    else
+      this.barFill = vitalPart ;
+    if( this.barLag < this.barFill )
+      this.barLag = this.barFill ;
+    else
+      this.barLag -= Math.max( 0.002, ( this.barLag - this.barFill ) * 0.06 ) ;
+    if( ! boss.isVanishingOrEscaping( ) )
+      circleTarget = 1 ;
+  } else {
+    this.barFill = 0 ;
+    this.barLag = 0 ;
+  }
+  if( bossManager && bossManager.existBoss( ) ) {
+    var circleBoss = bossManager.getBoss( ) ;
+    this.circleX = circleBoss.getX( ) ;
+    this.circleY = circleBoss.getY( ) ;
+  }
+  this.circleAlpha += ( circleTarget - this.circleAlpha ) * 0.06 ;
+  if( circleTarget == 0 && this.circleAlpha < 0.02 )
+    this.circleAlpha = 0 ;
+  this.circleSpell += ( ( stage.spellCard ? 1 : 0 ) - this.circleSpell ) * 0.06 ;
+  this.circleSpin += 0.02 + 0.02 * this.circleSpell ;
+} ;
+
+
+StageFx.prototype._drawBossCircle = function( surface ) {
+  if( this.circleAlpha <= 0 )
+    return ;
+  var circleRadius = ( 46 + 6 * Math.sin( this.circleSpin * 1.7 ) ) * ( 0.6 + 0.4 * this.circleAlpha ) ;
+  surface.save( ) ;
+  surface.translate( this.circleX, this.circleY ) ;
+  surface.globalAlpha = this.circleAlpha * ( 0.5 + 0.2 * this.circleSpell ) ;
+  surface.strokeStyle = this.circleSpell > 0.5 ? 'rgb(255, 120, 150)' : 'rgb(200, 225, 255)' ;
+
+  surface.lineWidth = 1.5 ;
+  surface.beginPath( ) ;
+  surface.arc( 0, 0, circleRadius, 0, Math.PI * 2 ) ;
+  surface.stroke( ) ;
+  surface.lineWidth = 1 ;
+  surface.beginPath( ) ;
+  surface.arc( 0, 0, circleRadius * 0.82, 0, Math.PI * 2 ) ;
+  surface.stroke( ) ;
+
+  // a star inside, turning one way
+  surface.rotate( this.circleSpin ) ;
+  surface.beginPath( ) ;
+  for( var i = 0; i <= 5; i++ ) {
+    var starAngle = i * Math.PI * 4 / 5 ;
+    var starX = Math.cos( starAngle ) * circleRadius * 0.82 ;
+    var starY = Math.sin( starAngle ) * circleRadius * 0.82 ;
+    if( i == 0 )
+      surface.moveTo( starX, starY ) ;
+    else
+      surface.lineTo( starX, starY ) ;
+  }
+  surface.stroke( ) ;
+
+  // little marks on the outer ring, turning the other way
+  surface.rotate( -this.circleSpin * 2 ) ;
+  surface.fillStyle = surface.strokeStyle ;
+  for( var j = 0; j < 12; j++ ) {
+    var markAngle = j * Math.PI / 6 ;
+    surface.fillRect( Math.cos( markAngle ) * circleRadius * 0.91 - 1.5,
+                      Math.sin( markAngle ) * circleRadius * 0.91 - 1.5, 3, 3 ) ;
+  }
+  surface.restore( ) ;
+} ;
+
+
+// the focus hitbox fades in and out instead of popping
+StageFx.prototype._updateFocus = function( ) {
+  var fighter = this.stage.fighter ;
+  var focusTarget = fighter && fighter.isFlagSet( fighter._FLAG_SLOW ) ? 1 : 0 ;
+  this.focusAlpha += ( focusTarget - this.focusAlpha ) * 0.25 ;
+  if( focusTarget == 0 && this.focusAlpha < 0.03 )
+    this.focusAlpha = 0 ;
+} ;
+
+
+// the field canvas moves with the shake, the overlay is moved by the stage
+StageFx.prototype.applyShake = function( ) {
+  if( ! this.bgCanvas )
+    this.bgCanvas = document.getElementById( 'bgCanvas' ) || { 'style': { } } ;
+  var shakeText = this.shakeX || this.shakeY ?
+                  'translate(' + this.shakeX.toFixed( 1 ) + 'px, ' + this.shakeY.toFixed( 1 ) + 'px)' : '' ;
+  if( this.bgCanvas.style.transform != shakeText )
+    this.bgCanvas.style.transform = shakeText ;
 } ;
 
 

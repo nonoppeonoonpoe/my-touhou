@@ -590,8 +590,12 @@ StageState.prototype.updateDisplay = function( surface ) {
   this.game.bgLayer.clear();
   this._displayBG();
   this._displayElements( surface ) ;
+  this.fx.applyShake( ) ;
+  surface.save( ) ;
+  surface.translate( this.fx.shakeX, this.fx.shakeY ) ;
   this.fx.draw( surface ) ;
   this._displayHitbox( surface ) ;
+  surface.restore( ) ;
   this._displayBombName( surface ) ;
   this._displayBossVital( surface ) ;
   this._displayStageTitle( surface ) ;
@@ -608,12 +612,9 @@ StageState.prototype.updateDisplay = function( surface ) {
 /**
  * TODO: temporal
  */
+// the background eases darker during bombs and spell cards
 StageState.prototype._displayBG = function() {
-  var darken = false;
-  if(this.isFlagSet(this._FLAG_BOMB) || this.spellCard) {
-    darken = true;
-  }
-  this.backgroundManager.draw(this.game.bgLayer, darken);
+  this.backgroundManager.draw(this.game.bgLayer, this.fx.bgDark);
 };
 
 
@@ -639,8 +640,10 @@ StageState.prototype._displayBossVital = function( surface ) {
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillRect( barLeft, 9, barWidth, 6 ) ;
   surface.globalAlpha = 0.9 ;
+  surface.fillStyle = 'rgb( 255, 110, 140 )' ;
+  surface.fillRect( barLeft, 10, barWidth * this.fx.barLag, 4 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillRect( barLeft, 10, barWidth * Math.max( 0, boss.vital ) / boss.maxVital, 4 ) ;
+  surface.fillRect( barLeft, 10, barWidth * this.fx.barFill, 4 ) ;
 
   // time left on this attack
   if( ! this.oldRules ) {
@@ -712,30 +715,39 @@ StageState.prototype._displayElements = function( surface ) {
 } ;
 
 
+/*
+ * the stage number slides in from the left and the name from the right,
+ * the name's letters spread out a bit while it shows, then it all fades
+ */
 StageState.prototype._displayStageTitle = function( surface ) {
   if( ! this.isFlagSet( this._FLAG_STAGE_TITLE ) )
     return ;
 
+  var inTime = __easeOut( __animTime( this.count, 0, 50 ) ) ;
+  var outTime = __easeInOut( __animTime( this.count, this._STAGE_TITLE_SPAN - 60, 60 ) ) ;
+  var alpha = inTime * ( 1 - outTime ) ;
   surface.save( ) ;
 
-  var alpha = 1.0 ;
-  if( this.count < 100 )
-    alpha = 0.01 * this.count ;
-  else if( this.count > this._STAGE_TITLE_SPAN - 100 )
-    alpha = 0.01 * ( this._STAGE_TITLE_SPAN - this.count ) ;
-
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.globalAlpha = alpha * 0.2 ;
-  surface.fillRect( 0, 170, 480, 100 ) ;
+  surface.globalAlpha = alpha * 0.25 ;
+  surface.fillRect( 0, 170, 480 * inTime, 100 ) ;
 
   surface.globalAlpha = alpha ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textAlign = 'left' ;
-  surface.font = '16px Arial' ;
-  surface.fillText( 'Stage' + ( this.stageIndex + 1 ), 100, 210 ) ;
-  surface.textAlign = 'right' ;
-  surface.fillText( this.params[ this.stageIndex ].title, 380, 250 ) ;
-  surface.fillRect( 100, 225, 280, 1 ) ;
+  surface.font = 'bold 18px Arial' ;
+  surface.fillText( 'Stage ' + ( this.stageIndex + 1 ), 100 - 80 * ( 1 - inTime ), 210 ) ;
+  surface.fillRect( 240 - 140 * inTime, 225, 280 * inTime, 1 ) ;
+
+  surface.font = 'italic 16px Georgia, serif' ;
+  var title = this.params[ this.stageIndex ].title ;
+  var letterGap = 1 + 3 * __easeOut( __animTime( this.count, 0, this._STAGE_TITLE_SPAN ) ) ;
+  var titleWidth = surface.measureText( title ).width + letterGap * ( title.length - 1 ) ;
+  var letterX = 380 - titleWidth + 80 * ( 1 - inTime ) ;
+  for( var i = 0; i < title.length; i++ ) {
+    surface.fillText( title.charAt( i ), letterX, 250 ) ;
+    letterX += surface.measureText( title.charAt( i ) ).width + letterGap ;
+  }
   surface.restore( ) ;
 } ;
 
@@ -1099,6 +1111,7 @@ StageState.prototype.notifyFighterFullPower = function( fighter ) {
     return ;
   this.enemyBulletManager.cancelIntoStars( fighter ) ;
   this.showMessage( 'Full Power Mode!!', 'rgb(255, 220, 120)' ) ;
+  this.fx.popWords( fighter.getX( ), fighter.getY( ), 'Full Power!', 'rgb(255, 240, 120)' ) ;
 } ;
 
 
@@ -1129,6 +1142,8 @@ StageState.prototype._checkExtend = function( ) {
       this.players++ ;
     this.setFlag( this._FLAG_SE_POWERUP ) ;
     this.showMessage( 'Extend!!', 'rgb(255, 160, 200)' ) ;
+    if( this.fighter )
+      this.fx.popWords( this.fighter.getX( ), this.fighter.getY( ), '1UP', 'rgb(255, 160, 200)' ) ;
   }
 } ;
 
@@ -1143,6 +1158,8 @@ StageState.prototype._runMessages = function( ) {
 
 StageState.prototype.notifyFighterPowerUp = function( ) {
   this.setFlag( this._FLAG_SE_POWERUP ) ;
+  if( this.fighter && ! this.fighter.isFullPower( ) )
+    this.fx.popWords( this.fighter.getX( ), this.fighter.getY( ), 'Power Up', 'rgb(255, 200, 120)' ) ;
 } ;
 
 
@@ -1205,6 +1222,7 @@ StageState.prototype.notifyFighterDoBomb = function( fighter ) {
   this.bombCount = this.count ;
   this.bombName = this._BOMB_NAMES[ fighter.characterIndex ] || this._BOMB_NAMES[ 0 ] ;
   this.fx.flash( 0.8 ) ;
+  this.fx.shake( 4, 26 ) ;
   this.setFlag( this._FLAG_BOMB ) ;
   if( ! this.canonMoves )
     this.enemyManager.bomb( fighter ) ;
@@ -1261,7 +1279,8 @@ StageState.prototype._endBossPhase = function( boss ) {
 StageState.prototype.notifyBossVanished = function( boss ) {
   this._endBossPhase( boss ) ;
   this._endPractice( ) ;
-  this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
+  this.fx.bossBurst( boss.getX( ), boss.getY( ) ) ;
+  this.fx.shake( 6, 36 ) ;
   this.fx.flash( 0.6 ) ;
   this.enemyBulletManager.beItem(this.fighterManager.getClosestFighter(boss)); // TODO: temporal
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
@@ -1373,6 +1392,7 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
   this.effectManager.createExplosion(fighter);
   this.fx.playerDeath(fighter.getX(), fighter.getY());
   this.fx.flash(0.4);
+  this.fx.shake(4, 20);
   this.notifyDoEffect(fighter, 'shockwave', null);
   fighter.setFlag( fighter._FLAG_UNHITTABLE ) ;
   fighter.deadCount = fighter.count ;
@@ -1574,6 +1594,7 @@ StageState.prototype.notifyBossMovedNextStage = function( boss ) {
   this._endBossPhase( boss ) ;
   this._endPractice( ) ;
   this.fx.enemyBurst( boss.getX( ), boss.getY( ), true ) ;
+  this.fx.shake( 3, 14 ) ;
   this.clearFlag( this._FLAG_BOSS_SPELLCARD ) ; // Just in case.
   this.setFlag( this._FLAG_SE_ENEMY_VANISH ) ;
   this.spellCard = null ;
@@ -1697,15 +1718,20 @@ StageState.prototype._displayMessages = function( surface ) {
   for( var i = 0; i < this.messages.length; i++ ) {
     var message = this.messages[ i ] ;
     var fade = this._MESSAGE_SPAN - message.count ;
-    // pops in a bit big then settles
-    var popSize = message.count < 8 ? 26 - message.count : 18 ;
-    surface.font = 'italic bold ' + popSize + 'px Georgia, serif' ;
-    surface.globalAlpha = fade < 30 ? Math.max( 0, fade / 30 ) : 1.0 ;
+    // bounces in, then floats up as it fades
+    var popScale = 0.2 + 0.8 * __easeBack( message.count / 16 ) ;
+    var leaveTime = fade < 30 ? 1 - Math.max( 0, fade / 30 ) : 0 ;
+    surface.save( ) ;
+    surface.translate( this.getWidth( ) / 2, 100 + i * 26 - 12 * leaveTime ) ;
+    surface.scale( popScale, popScale ) ;
+    surface.font = 'italic bold 18px Georgia, serif' ;
+    surface.globalAlpha = Math.min( 1, message.count / 6 ) * ( 1 - leaveTime ) ;
     surface.lineWidth = 4 ;
     surface.strokeStyle = 'rgba( 0, 0, 0, 0.8 )' ;
-    surface.strokeText( message.text, this.getWidth( ) / 2, 100 + i * 26 ) ;
+    surface.strokeText( message.text, 0, 0 ) ;
     surface.fillStyle = message.color ;
-    surface.fillText( message.text, this.getWidth( ) / 2, 100 + i * 26 ) ;
+    surface.fillText( message.text, 0, 0 ) ;
+    surface.restore( ) ;
   }
   surface.restore( ) ;
 } ;
@@ -1720,17 +1746,20 @@ StageState.prototype._displayHitbox = function( surface ) {
     var hitFighter = this.fighterManager.elements[ i ] ;
     if( hitFighter.isDead( ) )
       continue ;
-    var showDot = hitFighter.isFlagSet( hitFighter._FLAG_SLOW ) || this.debugFlags.hitboxes ;
-    if( ! showDot )
+    var focusAlpha = hitFighter == this.fighter ? this.fx.focusAlpha : ( hitFighter.isFlagSet( hitFighter._FLAG_SLOW ) ? 1 : 0 ) ;
+    if( this.debugFlags.hitboxes )
+      focusAlpha = 1 ;
+    if( focusAlpha <= 0 )
       continue ;
     var x = hitFighter.getX( ) ;
     var y = hitFighter.getY( ) ;
     var spin = this.animationCount * 0.05 ;
-    surface.globalAlpha = 0.85 ;
+    var ringRadius = 22 - 8 * focusAlpha ;
+    surface.globalAlpha = 0.85 * focusAlpha ;
     for( var arc = 0; arc < 4; arc++ ) {
       var arcStart = spin + arc * Math.PI / 2 ;
       surface.beginPath( ) ;
-      surface.arc( x, y, 14, arcStart, arcStart + 1.0 ) ;
+      surface.arc( x, y, ringRadius, arcStart, arcStart + 1.0 ) ;
       surface.strokeStyle = 'rgba( 40, 0, 30, 0.7 )' ;
       surface.lineWidth = 3.5 ;
       surface.stroke( ) ;
@@ -1738,7 +1767,7 @@ StageState.prototype._displayHitbox = function( surface ) {
       surface.lineWidth = 1.5 ;
       surface.stroke( ) ;
     }
-    surface.globalAlpha = 1.0 ;
+    surface.globalAlpha = focusAlpha ;
     surface.fillStyle = 'rgb( 255, 255, 255 )' ;
     surface.beginPath( ) ;
     surface.arc( x, y, hitFighter.hitRadius + 1, 0, Math.PI * 2 ) ;
@@ -1986,31 +2015,57 @@ StageState.prototype._restart = function( ) {
 } ;
 
 
+// the game is stopped while paused, so this menu animates on real time
 StageState.prototype._displayPause = function( surface ) {
-  if( ! this.paused )
+  if( ! this.paused ) {
+    this.pauseOpenTime = 0 ;
     return ;
+  }
   var pauseItems = this._getPauseItems( ) ;
   var isDebug = this.pausePage == 'debug' ;
+  var rowGap = isDebug ? Math.min( 22, Math.floor( 360 / pauseItems.length ) ) : 32 ;
+  var firstRow = isDebug ? 85 : 220 ;
+  var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+  var barTarget = firstRow + this.pauseIndex * rowGap ;
+  if( ! this.pauseOpenTime || this.pauseOpenPage != this.pausePage ) {
+    if( ! this.pauseOpenTime )
+      this.pauseDimTime = nowTime ;
+    this.pauseOpenTime = nowTime ;
+    this.pauseOpenPage = this.pausePage ;
+    this.pauseBarY = barTarget ;
+  }
+  this.pauseBarY += ( barTarget - this.pauseBarY ) * 0.3 ;
+  var dimTime = __easeOut( ( nowTime - this.pauseDimTime ) / 200 ) ;
+  var centerX = this.getWidth( ) / 2 ;
+
   surface.save( ) ;
-  surface.globalAlpha = 0.6 ;
+  surface.globalAlpha = 0.6 * dimTime ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillRect( 0, 0, this.getWidth( ), this.getHeight( ) ) ;
-  surface.globalAlpha = 1.0 ;
+
+  var openTime = __easeOut( ( nowTime - this.pauseOpenTime ) / 260 ) ;
+  var barGradient = surface.createLinearGradient( centerX - 150, 0, centerX + 150, 0 ) ;
+  barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0 )' ) ;
+  barGradient.addColorStop( 0.5, 'rgba( 220, 60, 80, 0.5 )' ) ;
+  barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
+  surface.globalAlpha = openTime ;
+  surface.fillStyle = barGradient ;
+  surface.fillRect( centerX - 150, this.pauseBarY - ( isDebug ? 15 : 20 ), 300, isDebug ? 20 : 27 ) ;
+
   surface.textAlign = 'center' ;
   surface.font = 'bold 24px Arial' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillText( isDebug ? 'Debug' : 'Paused', this.getWidth( ) / 2, isDebug ? 50 : 170 ) ;
+  surface.fillText( isDebug ? 'Debug' : 'Paused', centerX, ( isDebug ? 50 : 170 ) - 20 * ( 1 - openTime ) ) ;
   surface.font = isDebug ? '15px Arial' : '18px Arial' ;
-  var rowGap = isDebug ? Math.min( 22, Math.floor( 360 / pauseItems.length ) ) : 32 ;
-  var firstRow = isDebug ? 85 : 220 ;
   for( var i = 0; i < pauseItems.length; i++ ) {
-    surface.globalAlpha = ( i == this.pauseIndex ) ? 1.0 : 0.4 ;
-    surface.fillText( pauseItems[ i ].label, this.getWidth( ) / 2, firstRow + i * rowGap ) ;
+    var rowTime = __easeOut( ( nowTime - this.pauseOpenTime - i * 30 ) / 220 ) ;
+    surface.globalAlpha = ( ( i == this.pauseIndex ) ? 1.0 : 0.4 ) * rowTime ;
+    surface.fillText( pauseItems[ i ].label, centerX - 50 * ( 1 - rowTime ), firstRow + i * rowGap ) ;
   }
   if( isDebug && this.cheated ) {
     surface.globalAlpha = 0.7 ;
     surface.font = '12px Arial' ;
-    surface.fillText( 'cheats used, the hiscore won\'t save this run', this.getWidth( ) / 2, this.getHeight( ) - 20 ) ;
+    surface.fillText( 'cheats used, the hiscore won\'t save this run', centerX, this.getHeight( ) - 20 ) ;
   }
   surface.restore( ) ;
 } ;
@@ -2416,13 +2471,24 @@ function TalkState( stage ) {
 __inherit( TalkState, StageAbstractState ) ;
 
 
-TalkState._NAMES = { 'daiyousei': 'Daiyousei' } ;
+TalkState._NAMES = { 'reimu': 'Reimu', 'marisa': 'Marisa', 'rumia': 'Rumia', 'daiyousei': 'Daiyousei',
+                     'chilno': 'Cirno', 'kogasa': 'Kogasa', 'keine': 'Keine', 'mokou': 'Mokou' } ;
+
+TalkState._NAME_COLORS = { 'reimu': 'rgb( 220, 60, 70 )', 'marisa': 'rgb( 220, 180, 50 )',
+                           'rumia': 'rgb( 150, 90, 200 )', 'daiyousei': 'rgb( 90, 190, 110 )',
+                           'chilno': 'rgb( 80, 160, 230 )', 'kogasa': 'rgb( 130, 90, 210 )',
+                           'keine': 'rgb( 70, 120, 200 )', 'mokou': 'rgb( 230, 110, 60 )' } ;
+
+// letters typed per step, and how long portraits and the window take to come in
+TalkState._TYPE_SPEED = 1.2 ;
+TalkState._ENTER_SPAN = 22 ;
 
 
 TalkState.prototype.reset = function( ) {
   this.stageIndex = 0 ;
   this.sceneIndex = 0 ;
   this.index = 0 ;
+  this.lastStep = -10 ;
   this.scene = null ;
   this.afterTalk = null ;
   this.talkBoss = null ;
@@ -2445,6 +2511,52 @@ TalkState.prototype._getLines = function( ) {
 } ;
 
 
+/*
+ * a talk counts as new when the last step it ran wasn't the one just before.
+ * the counts here also decide when z finishes the typing, so they only move in steps
+ */
+TalkState.prototype._checkNewTalk = function( ) {
+  if( this.lastStep == this.stage.animationCount - 1 )
+    return ;
+  this.lastStep = this.stage.animationCount - 1 ;
+  this.talkCount = 0 ;
+  this.lineCount = 0 ;
+  this.focus = { 'left': 0, 'right': 0 } ;
+  this.sideEnter = { 'left': 0, 'right': 0 } ;
+  this.sideCharacter = { 'left': null, 'right': null } ;
+} ;
+
+
+TalkState.prototype.runStep = function( ) {
+  this._checkNewTalk( ) ;
+  this.lastStep = this.stage.animationCount ;
+  this.talkCount++ ;
+  this.lineCount++ ;
+
+  var line = this._getLines( )[ this.index ] ;
+  if( ! line )
+    return ;
+  var sides = [ 'left', 'right' ] ;
+  for( var i = 0; i < sides.length; i++ ) {
+    var side = sides[ i ] ;
+    var character = line[ side ] ? line[ side ].character : null ;
+    if( character != this.sideCharacter[ side ] ) {
+      this.sideCharacter[ side ] = character ;
+      this.sideEnter[ side ] = 0 ;
+    }
+    this.sideEnter[ side ]++ ;
+    var targetFocus = line[ side ] && line[ side ].active ? 1 : 0 ;
+    this.focus[ side ] += ( targetFocus - this.focus[ side ] ) * 0.2 ;
+  }
+} ;
+
+
+TalkState.prototype._isTyping = function( ) {
+  var line = this._getLines( )[ this.index ] ;
+  return line && this.lineCount * TalkState._TYPE_SPEED < line.serif.length ;
+} ;
+
+
 TalkState.prototype.handleKeyDown = function( e ) {
   var p = [ ] ;
   switch( e.keyCode ) {
@@ -2454,6 +2566,13 @@ TalkState.prototype.handleKeyDown = function( e ) {
       break ;
     case 90: // z
       p.push( 'z' ) ;
+      this._checkNewTalk( ) ;
+      // first press shows the whole line. old replays were made without this
+      if( this._isTyping( ) && ! this.stage.oldRules ) {
+        this.lineCount = 9999 ;
+        break ;
+      }
+      this.lineCount = 0 ;
       this.index++ ;
       if( this.scene ) {
         if( this.index >= this._getLines( ).length ) {
@@ -2488,38 +2607,42 @@ TalkState.prototype.handleKeyUp = function( e ) {
 
 
 TalkState.prototype.updateDisplay = function( surface ) {
+  if( this.talkCount === undefined )
+    return ;
   var line = this._getLines( )[ this.index ] ;
-  this._displayStandUp( surface, line.left,  120,  0 ) ;
-  this._displayStandUp( surface, line.right, 360,  0 ) ;
+  this._displayStandUp( surface, line.left,  'left',  120 ) ;
+  this._displayStandUp( surface, line.right, 'right', 360 ) ;
   this._displaySerifWindow( surface ) ;
   this._displaySerif( surface ) ;
 } ;
 
 
-/**
- * TODO: temporal
+/*
+ * portraits fade in while sliding from their side. whoever talks steps
+ * toward the middle and gets bright, the other one sinks back and dims
  */
-TalkState.prototype._displayStandUp = function( surface, params, w, dw ) {
+TalkState.prototype._displayStandUp = function( surface, params, side, w ) {
   if( ! params )
     return ;
 
-  surface.save( ) ;
-  if( params.active ) {
-    surface.globalAlpha = 1.0 ;
-    w += dw ;
-  } else {
-    surface.globalAlpha = 0.5 ;
-  }
   var p = this._getStandUp( params.character ) ;
-  if( ! p.image ) {
-    surface.restore( ) ;
+  if( ! p.image )
     return ;
-  }
+
+  var enterTime = __easeOut( __animTime( this.sideEnter[ side ], 0, TalkState._ENTER_SPAN ) ) ;
+  var sideSign = side == 'left' ? -1 : 1 ;
+  var focus = this.focus[ side ] ;
+  var standX = w + sideSign * 90 * ( 1 - enterTime ) - sideSign * 14 * focus ;
+  var standY = 50 + 8 * ( 1 - focus ) ;
+  var standScale = 0.75 * ( 0.96 + 0.04 * focus ) ;
+
+  surface.save( ) ;
+  surface.globalAlpha = enterTime * ( 0.45 + 0.55 * focus ) ;
   surface.drawImage( p.image,
-                     w - p.width * 0.75 / 2,
-                     50,
-                     p.width  * 0.75,
-                     p.height * 0.75 ) ;
+                     standX - p.width * standScale / 2,
+                     standY,
+                     p.width  * standScale,
+                     p.height * standScale ) ;
   surface.restore( ) ;
 } ;
 
@@ -2532,33 +2655,68 @@ TalkState.prototype._getStandUp = function( key ) {
 } ;
 
 
+TalkState.prototype._getWindowTime = function( ) {
+  return __easeOut( __animTime( this.talkCount, 4, 14 ) ) ;
+} ;
+
+
 TalkState.prototype._displaySerifWindow = function( surface ) {
+  var windowTime = this._getWindowTime( ) ;
   surface.save( ) ;
   surface.fillStyle = 'rgb( 50, 50, 50 )' ;
-  surface.globalAlpha = 0.7 ;
-  surface.fillRect( 50, 350, 380, 100 ) ;
+  surface.globalAlpha = 0.7 * windowTime ;
+  surface.fillRect( 50, 350 + 20 * ( 1 - windowTime ), 380, 100 ) ;
   surface.restore( ) ;
 } ;
 
 
 TalkState.prototype._displaySerif = function( surface ) {
+  var windowTime = this._getWindowTime( ) ;
+  if( windowTime < 1 )
+    return ;
+
   surface.save( ) ;
+  var line = this._getLines( )[ this.index ] ;
+  var speakerSide = line.left && line.left.active ? line.left : line.right ;
+  var speaker = speakerSide ? speakerSide.character : null ;
+
+  // a name tab on the window, it slides over to the side that talks
+  if( speaker ) {
+    var tagName = TalkState._NAMES[ speaker ] || speaker ;
+    surface.font = 'bold 14px Arial' ;
+    var tagWidth = surface.measureText( tagName ).width + 20 ;
+    var tagTime = __easeOut( __animTime( this.lineCount, 0, 10 ) ) ;
+    var tagLeft = speakerSide == line.left ? 50 : 430 - tagWidth ;
+    surface.globalAlpha = 0.9 * tagTime ;
+    surface.fillStyle = TalkState._NAME_COLORS[ speaker ] || 'rgb( 90, 90, 90 )' ;
+    surface.fillRect( tagLeft, 328 + 6 * ( 1 - tagTime ), tagWidth, 22 ) ;
+    surface.globalAlpha = tagTime ;
+    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+    surface.textAlign = 'left' ;
+    surface.fillText( tagName, tagLeft + 10, 344 + 6 * ( 1 - tagTime ) ) ;
+  }
+
+  // the line types out letter by letter
+  surface.globalAlpha = 1.0 ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textAlign = 'left' ;
   surface.font = '16px Arial' ;
-  var line = this._getLines( )[ this.index ] ;
+  var shownLetters = Math.floor( this.lineCount * TalkState._TYPE_SPEED ) ;
   var array = line.serif.split( '\n' ) ;
-  // someone with no portrait gets her name over the text so you know who's talking
-  var speaker = line.right && line.right.active ? line.right.character : null ;
-  if( speaker && Game._CHARACTERS[ speaker ] && Game._CHARACTERS[ speaker ].stand === null ) {
-    surface.fillStyle = 'rgb( 160, 255, 170 )' ;
-    surface.font = 'bold 14px Arial' ;
-    surface.fillText( TalkState._NAMES[ speaker ] || speaker, 60, 366 ) ;
-    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-    surface.font = '16px Arial' ;
+  for( var i = 0; i < array.length && shownLetters > 0; i++ ) {
+    surface.fillText( array[ i ].substring( 0, shownLetters ), 60, 380 + i * 20 ) ;
+    shownLetters -= array[ i ].length + 1 ;
   }
-  for( var i = 0; i < array.length; i++ ) {
-    surface.fillText( array[ i ], 60, 380 + i * 20) ;
+
+  if( ! this._isTyping( ) ) {
+    surface.globalAlpha = 0.5 + 0.5 * Math.sin( this.stage.animationCount / 6 ) ;
+    surface.beginPath( ) ;
+    var arrowY = 438 + 2 * Math.sin( this.stage.animationCount / 6 ) ;
+    surface.moveTo( 412, arrowY - 4 ) ;
+    surface.lineTo( 422, arrowY - 4 ) ;
+    surface.lineTo( 417, arrowY + 2 ) ;
+    surface.closePath( ) ;
+    surface.fill( ) ;
   }
   surface.restore( ) ;
 } ;
@@ -2616,32 +2774,78 @@ ClearState.prototype.handleKeyUp = function( e ) {
 } ;
 
 
+/*
+ * the summary: the backdrop wipes up, the panel pops in, then each row
+ * slides in and its number counts up. the z gate still uses _MOVE_SPEED
+ */
 ClearState.prototype.updateDisplay = function( surface ) {
-
-  var base = this.stage.getHeight( ) - this.count * ClearState._MOVE_SPEED ;;
-  if( base < 0 )
-    base = 0 ;
+  var width = this.stage.getWidth( ) ;
+  var height = this.stage.getHeight( ) ;
+  var wipeSpan = height / ClearState._MOVE_SPEED ;
+  var base = height * ( 1 - __easeInOut( this.count / wipeSpan ) ) ;
 
   surface.save( ) ;
   var pattern = surface.createPattern( this.getImage( Game._IMG_SCORE_BACK ), '' ) ;
   surface.fillStyle = pattern ;
-  surface.fillRect( 0, base, this.stage.getWidth( ), this.stage.getHeight( ) ) ;
+  surface.fillRect( 0, base, width, height ) ;
+  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+  surface.fillRect( 0, base - 3, width, 3 ) ;
 
+  var panelTime = __animTime( this.count, wipeSpan * 0.6, 16 ) ;
+  if( panelTime <= 0 ) {
+    surface.restore( ) ;
+    return ;
+  }
+  var panelScale = 0.9 + 0.1 * __easeBack( panelTime ) ;
+  surface.translate( 240, 240 ) ;
+  surface.scale( panelScale, panelScale ) ;
+  surface.translate( -240, -240 ) ;
   surface.fillStyle = 'rgb( 30, 30, 30 )' ;
-  surface.globalAlpha = 0.8 ;
-  surface.fillRect( 50, base + 50, 380, 380 ) ;
+  surface.globalAlpha = 0.8 * __easeOut( panelTime ) ;
+  surface.fillRect( 50, 50, 380, 380 ) ;
+
+  var rowStart = wipeSpan * 0.6 + 12 ;
+  var titleTime = __animTime( this.count, rowStart, 18 ) ;
+  surface.globalAlpha = __easeOut( titleTime ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.textAlign = 'left' ;
-  surface.font = '16px Arial' ;
-  surface.fillText( 'Stage' + ( this.stage.stageIndex + 1 ) + ' Clear',
-                    100, base + 100 ) ;
+  surface.textAlign = 'center' ;
+  surface.font = 'bold 26px Arial' ;
+  surface.fillText( 'Stage ' + ( this.stage.stageIndex + 1 ) + ' Clear', 240, 110 - 16 * ( 1 - __easeBack( titleTime ) ) ) ;
+  surface.fillStyle = 'rgb( 200, 30, 40 )' ;
+  var lineWidth = 220 * __easeOut( __animTime( this.count, rowStart + 8, 20 ) ) ;
+  surface.fillRect( 240 - lineWidth / 2, 124, lineWidth, 2 ) ;
+
+  var rows = [ ] ;
   if( ! this.stage.oldRules ) {
-    surface.fillText( 'Point items  ' + this.stage.pointItems, 100, base + 150 ) ;
-    surface.fillText( 'Graze  ' + this.stage.graze, 100, base + 175 ) ;
-    surface.fillText( 'Clear bonus  ' + this.stage.clearBonus, 100, base + 210 ) ;
+    rows.push( [ 'Point items', this.stage.pointItems ] ) ;
+    rows.push( [ 'Graze', this.stage.graze ] ) ;
+    rows.push( [ 'Clear bonus', this.stage.clearBonus ] ) ;
+  }
+  surface.font = '18px Arial' ;
+  for( var i = 0; i < rows.length; i++ ) {
+    var rowTime = __animTime( this.count, rowStart + 16 + i * 10, 16 ) ;
+    if( rowTime <= 0 )
+      continue ;
+    var countTime = __easeOut( __animTime( this.count, rowStart + 20 + i * 10, 40 ) ) ;
+    var rowX = -40 * ( 1 - __easeOut( rowTime ) ) ;
+    var rowY = 175 + i * 40 + ( i == rows.length - 1 ? 15 : 0 ) ;
+    surface.globalAlpha = __easeOut( rowTime ) ;
+    surface.fillStyle = i == rows.length - 1 ? 'rgb( 255, 220, 140 )' : 'rgb( 230, 230, 230 )' ;
+    surface.textAlign = 'left' ;
+    surface.fillText( rows[ i ][ 0 ], 100 + rowX, rowY ) ;
+    surface.textAlign = 'right' ;
+    surface.fillText( Math.floor( rows[ i ][ 1 ] * countTime ), 380 + rowX, rowY ) ;
+  }
+
+  var hintTime = __animTime( this.count, rowStart + 70, 20 ) ;
+  if( hintTime > 0 ) {
+    surface.globalAlpha = hintTime * ( 0.55 + 0.45 * Math.sin( this.count / 10 ) ) ;
+    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+    surface.textAlign = 'center' ;
+    surface.font = '14px Arial' ;
+    surface.fillText( 'Press Z to go on', 240, 400 ) ;
   }
   surface.restore( ) ;
-
 } ;
 
 
@@ -2676,13 +2880,15 @@ __inherit( GameOverState, StageAbstractState ) ;
 
 GameOverState.prototype.init = function( ) {
   this.index = this.stage.getContinuesLeft( ) > 0 ? 0 : 1 ;
+  this.count = 0 ;
+  this.barY = this.index == 0 ? 200 : 240 ;
 } ;
 
 
-/**
- * TODO: temporal
- */
 GameOverState.prototype.runStep = function( ) {
+  this.count++ ;
+  var barTarget = this.index == 0 ? 200 : 240 ;
+  this.barY += ( barTarget - this.barY ) * 0.3 ;
 } ;
 
 
@@ -2711,34 +2917,37 @@ GameOverState.prototype.handleKeyUp = function( e ) {
 
 
 GameOverState.prototype.updateDisplay = function( surface ) {
+  var openTime = __easeOut( __animTime( this.count, 0, 18 ) ) ;
   surface.save( ) ;
 
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  surface.globalAlpha = 0.5 ;
-  surface.fillRect( 0, 170, 480, 100 ) ;
+  surface.globalAlpha = 0.5 * openTime ;
+  surface.fillRect( 0, 220 - 50 * openTime, 480, 100 * openTime ) ;
+
+  var barGradient = surface.createLinearGradient( 120, 0, 360, 0 ) ;
+  barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0 )' ) ;
+  barGradient.addColorStop( 0.5, 'rgba( 220, 60, 80, 0.5 )' ) ;
+  barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
+  surface.globalAlpha = openTime ;
+  surface.fillStyle = barGradient ;
+  surface.fillRect( 120, this.barY - 16, 240, 22 ) ;
 
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textAlign = 'center' ;
-  surface.textBaseAlign = 'middle' ;
   surface.font = '16px Arial' ;
-  if( this.index == 0 ) {
-    surface.globalAlpha = 1.0 ;
-  } else {
-    surface.globalAlpha = 0.2 ;
-  }
   var continuesLeft = this.stage.getContinuesLeft( ) ;
-  if( continuesLeft <= 0 )
-    surface.globalAlpha = 0.1 ;
   var continueText = 'Continue' ;
   if( ! this.stage.oldRules )
     continueText += ' (' + continuesLeft + ' left)' ;
-  surface.fillText( continueText, 240, 200 ) ;
-  if( this.index == 0 ) {
-    surface.globalAlpha = 0.2 ;
-  } else {
-    surface.globalAlpha = 1.0 ;
+  var rows = [ continueText, 'Quit' ] ;
+  for( var i = 0; i < rows.length; i++ ) {
+    var rowTime = __easeOut( __animTime( this.count, 6 + i * 5, 14 ) ) ;
+    var rowAlpha = this.index == i ? 1.0 : 0.2 ;
+    if( i == 0 && continuesLeft <= 0 )
+      rowAlpha = 0.1 ;
+    surface.globalAlpha = rowAlpha * rowTime ;
+    surface.fillText( rows[ i ], 240 - 30 * ( 1 - rowTime ), 200 + i * 40 ) ;
   }
-  surface.fillText( 'Quit',     240, 240 ) ;
   surface.restore( ) ;
 } ;
 

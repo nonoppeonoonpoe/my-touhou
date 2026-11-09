@@ -88,6 +88,12 @@ ReplaySelectState.prototype.runStep = function( ) {
     this.loadReplayList( ) ;
   }
   this.count++ ;
+  if( this.state == ReplaySelectState._STATE_SELECT )
+    this.selectCount = ( this.selectCount || 0 ) + 1 ;
+  else
+    this.selectCount = 0 ;
+  var barTarget = 100 + 20 * this.index ;
+  this.barY = this.selectCount <= 1 ? barTarget : this.barY + ( barTarget - this.barY ) * 0.3 ;
 } ;
 
 
@@ -174,13 +180,18 @@ ReplaySelectState.prototype._displayList = function( surface ) {
   surface.font = "16px 'Comic Sans MS'" ;
   surface.textAlign = 'left' ;
   surface.textBaseAlign = 'middle' ;
+  // rows slide in one after another, a bar glides to the picked one
+  var barGradient = surface.createLinearGradient( w - 20, 0, w + 480, 0 ) ;
+  barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0.5 )' ) ;
+  barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
+  surface.globalAlpha = __easeOut( this.selectCount / 15 ) ;
+  surface.fillStyle = barGradient ;
+  surface.fillRect( w - 20, this.barY - 15, 500, 20 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   for( var i = 0; i < this.list.length; i++ ) {
-    if( i == this.index )
-      surface.globalAlpha = 1.0 ;
-    else
-      surface.globalAlpha = 0.4 ;
-    surface.fillText( this._buildReplayStrings( this.list[ i ] ), w, h + 20 * i ) ;
+    var rowTime = __easeOut( __animTime( this.selectCount, i * 3, 16 ) ) ;
+    surface.globalAlpha = ( i == this.index ? 1.0 : 0.4 ) * rowTime ;
+    surface.fillText( this._buildReplayStrings( this.list[ i ] ), w - 40 * ( 1 - rowTime ) + ( i == this.index ? 6 : 0 ), h + 20 * i ) ;
   }
   surface.restore( ) ;
 } ;

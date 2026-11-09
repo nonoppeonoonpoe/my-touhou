@@ -80,13 +80,14 @@ BackgroundManager.prototype.setDarkness = function(d) {
 };
 
 
+// darken can be a brightness from 0.4 to 1, so the change can ease in
 BackgroundManager.prototype.draw = function(layer, darken) {
-  var d = darken ? 0.4 : 1.0;
+  var d = typeof darken == 'number' ? darken : (darken ? 0.4 : 1.0);
 
   this.setDarkness(d);
   this.drawers[this.activeIndex].draw(layer);
 
-  if(! darken)
+  if(d >= 0.99)
     this._drawEffect(layer);
 };
 
