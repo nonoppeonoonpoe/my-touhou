@@ -193,7 +193,6 @@ StageState.prototype.init = function( params ) {
     this.baseCharacterIndex2 = params.characterIndex2;
   }
   this.fighter.setCharacterIndex(this.baseCharacterIndex);
-  this.fighter.oldMovement = params.autoplay ? true : false;
   if(this.game.isMultiPlay()) {
     this.fighter2.setCharacterIndex(this.baseCharacterIndex2);
   }
@@ -203,8 +202,11 @@ StageState.prototype.init = function( params ) {
    * old replays were recorded with the old rules, so they play with them.
    * everything else uses the eosd style rules.
    */
-  this.oldRules = params.autoplay ? true : false ;
+  this.oldRules = params.autoplay && ! params.autoplayParams.eosd ? true : false ;
+  this.fighter.oldMovement = this.oldRules ;
   this.startParams = params ;
+  // saved replays bring the lives and bombs they were played with
+  this.replayStart = params.autoplay && params.autoplayParams.eosd ? params.autoplayParams : null ;
   this.players = this.oldRules ? 3 : this.getStartPlayers( ) ;
   this.bombs = this.oldRules ? 2 : this.getStartBombs( ) ;
   this._resetEosdState( ) ;
@@ -278,12 +280,16 @@ StageState.prototype._initItems = function() {
 
 // from the options menu, the eosd defaults if it isn't there
 StageState.prototype.getStartPlayers = function( ) {
+  if( this.replayStart )
+    return this.replayStart.lives ;
   var options = this.game.options ;
   return options && typeof options.lives == 'number' ? options.lives : this._START_PLAYERS ;
 } ;
 
 
 StageState.prototype.getStartBombs = function( ) {
+  if( this.replayStart )
+    return this.replayStart.bombs ;
   var options = this.game.options ;
   return options && typeof options.bombs == 'number' ? options.bombs : this._START_BOMBS ;
 } ;
@@ -942,6 +948,27 @@ StageState.prototype.putKeyOffRecord = function( record ) {
   for( var i = 0; i < record.length; i++ )
     h[ record[ i ] ] = false ;
   this.playRecords.push( h ) ;
+} ;
+
+
+// only normal single play runs with no cheats get saved
+StageState.prototype.canSaveReplay = function( ) {
+  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && this.playRecords.length > 0 ;
+} ;
+
+
+StageState.prototype.exportLocalReplay = function( ) {
+  return {
+    'user': 'you',
+    'eosd': true,
+    'characterIndex': this.baseCharacterIndex,
+    'seed': this.seed,
+    'lives': this.getStartPlayers( ),
+    'bombs': this.getStartBombs( ),
+    'score': this.score,
+    'datetime': new Date( ).getTime( ),
+    'params': this.playRecords
+  } ;
 } ;
 
 

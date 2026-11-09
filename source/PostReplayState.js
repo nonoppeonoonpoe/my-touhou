@@ -20,28 +20,12 @@ PostReplayState.prototype.init = function( ) {
 } ;
 
 
-/**
- * TODO: temporal. implement error handling
- */
+// the old replay server is gone, replays are kept in the browser now
 PostReplayState.prototype._postReplay = function( ) {
-  var user = window.prompt( 'your name?' ) ;
-  if( ! user )
-    return ;
-  var xhr = new XMLHttpRequest( ) ;
-  xhr.open( 'POST', PostReplayState._DIR + 'post.cgi', true ) ;
-  var self = this ;
-  xhr.onload = function( ) {
-    self.game.notifyQuitStage( ) ; // TODO: temporal
-  } ;
-  xhr.onerror = function( e ) {
-    window.alert( e ) ;
-  } ;
-  // TODO: temporal
-  params = this.game.states[ Game._STATE_IN_STAGE ].exportPlayRecord( ) ;
-  params.user = user ;
-  xhr.setRequestHeader( 'Content-Type', 'application/x-www-form-urlencoded' ) ;
-  xhr.send( this._encode( params ) ) ;
-  this.state = PostReplayState._STATE_REPLAY_POSTING ;
+  var stage = this.game.states[ Game._STATE_IN_STAGE ] ;
+  this.saved = this.game.saveReplay( stage.exportLocalReplay( ) ) ;
+  this.state = this.saved ? PostReplayState._STATE_REPLAY_POSTING : PostReplayState._STATE_REPLAY_POSTING_ERROR ;
+  this.doneCount = this.count ;
 } ;
 
 
@@ -62,6 +46,9 @@ PostReplayState.prototype._encode = function( data ) {
 
 PostReplayState.prototype.runStep = function( ) {
   this.count++ ;
+  // show saved (or the error) for a moment, then back to the title
+  if( this.state != PostReplayState._STATE_SELECT && this.count - this.doneCount > 60 )
+    this.game.notifyQuitStage( ) ;
 } ;
 
 
@@ -109,11 +96,13 @@ PostReplayState.prototype._displayMessage = function( surface ) {
   surface.textAlign = 'center' ;
   surface.textBaseAlign = 'middle' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillText( 'Replay Select', this.getWidth( ) / 2, 35 ) ;
+  surface.fillText( 'Replay', this.getWidth( ) / 2, 35 ) ;
 
   // TODO: temporal
   if( this.state == PostReplayState._STATE_REPLAY_POSTING ) {
-    surface.fillText( 'Saving...', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
+    surface.fillText( 'Saved', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
+  } else if( this.state == PostReplayState._STATE_REPLAY_POSTING_ERROR ) {
+    surface.fillText( 'Could not save it', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
   }
 
   surface.restore( ) ;

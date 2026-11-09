@@ -58,8 +58,10 @@ ReplaySelectState.prototype._loadFile = function( path, onLoad, errorState ) {
 
 ReplaySelectState.prototype.loadReplayList = function( ) {
   var self = this ;
+  // replays saved in this browser come first, then the ones that came with the game
+  var savedReplays = this.game.loadSavedReplays( ) ;
   this._loadFile( 'replay_list.txt', function( list ) {
-    self.list = list ;
+    self.list = savedReplays.concat( list ) ;
     self.state = ReplaySelectState._STATE_SELECT ;
   }, ReplaySelectState._STATE_LIST_LOADING_ERROR ) ;
   this.state = ReplaySelectState._STATE_LIST_LOADING ;
@@ -70,6 +72,10 @@ ReplaySelectState.prototype.loadReplay = function( ) {
   if( this.state != ReplaySelectState._STATE_SELECT || this.list.length == 0 )
     return ;
   var self = this ;
+  if( this.list[ this.index ].eosd ) {
+    this.game.notifyReplaySelectConclusion( this.list[ this.index ] ) ;
+    return ;
+  }
   this._loadFile( 'replay' + this.list[ this.index ].id + '.txt', function( params ) {
     self.game.notifyReplaySelectConclusion( params ) ;
   }, ReplaySelectState._STATE_REPLAY_LOADING_ERROR ) ;
@@ -182,7 +188,10 @@ ReplaySelectState.prototype._displayList = function( surface ) {
 
 ReplaySelectState.prototype._buildReplayStrings = function( params ) {
   var buffer = '' ;
-  buffer += params.id + ': ' + params.user + ' ' ;
+  if( params.eosd )
+    buffer += 'Saved: ' + params.score + ' ' ;
+  else
+    buffer += params.id + ': ' + params.user + ' ' ;
   if( params.characterIndex == 0 ) {
     buffer += 'Reimu' ;
   } else {

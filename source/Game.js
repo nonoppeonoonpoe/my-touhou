@@ -316,6 +316,34 @@ Game.prototype._loadOptions = function( ) {
 } ;
 
 
+Game._REPLAYS_KEY = 'jstouhou_replays' ;
+Game._MAX_REPLAYS = 10 ;
+
+Game.prototype.loadSavedReplays = function( ) {
+  var savedReplays = [ ] ;
+  try {
+    savedReplays = JSON.parse( window.localStorage.getItem( Game._REPLAYS_KEY ) || '[]' ) ;
+  } catch( err ) {
+    savedReplays = [ ] ;
+  }
+  return savedReplays instanceof Array ? savedReplays : [ ] ;
+} ;
+
+
+// newest first, the oldest one drops off past the limit
+Game.prototype.saveReplay = function( replay ) {
+  var savedReplays = this.loadSavedReplays( ) ;
+  savedReplays.unshift( replay ) ;
+  savedReplays.length = Math.min( savedReplays.length, Game._MAX_REPLAYS ) ;
+  try {
+    window.localStorage.setItem( Game._REPLAYS_KEY, JSON.stringify( savedReplays ) ) ;
+    return true ;
+  } catch( err ) {
+    return false ;
+  }
+} ;
+
+
 Game.prototype.saveOptions = function( ) {
   try {
     window.localStorage.setItem( Game._OPTIONS_KEY, JSON.stringify( this.options ) ) ;
@@ -586,8 +614,12 @@ Game.prototype.notifyReplaySelectConclusion = function( params ) {
  * TODO: temporal
  */
 Game.prototype.notifyQuitStage = function( flag ) {
-  // the "save your replay?" screen posted to a server that's gone, so skip it
-  this._changeState( Game._STATE_OPENING, { } ) ;
+  // after a finished run, ask to save the replay in the browser
+  var stage = this.states[ Game._STATE_IN_STAGE ] ;
+  if( flag && ! this.isMultiPlay( ) && stage.canSaveReplay( ) )
+    this._changeState( Game._STATE_POST_REPLAY, { } ) ;
+  else
+    this._changeState( Game._STATE_OPENING, { } ) ;
 
   // TODO: temporal
   if(this.isMultiPlay())
