@@ -323,6 +323,9 @@ Boss.prototype.init = function(params, image) {
 
   this.appearedTalk = params.appearedTalk ;
   this.vanishedTalk = params.vanishedTalk ;
+  // names of the talks before the fight and after it, from __talkScenes
+  this.talkBefore = params.talkBefore ;
+  this.talkAfter = params.talkAfter ;
   this.character = params.character ;
   this.score = params.score ;
   this.dead = params.dead ;
@@ -576,6 +579,8 @@ Boss.prototype.outOfTheField = function() {
 
 Boss.prototype._beginEscape = function() {
   this.escaping = true;
+  if(this.talkAfter)
+    this.gameState.notifyBossEscapeTalk(this);
   this.gravity = null;
   // TODO: temporal
   this.vector = this.moveVectorManager.create(this._ESCAPE_VECTOR);

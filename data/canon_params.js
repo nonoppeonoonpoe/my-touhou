@@ -515,8 +515,7 @@ var __canonStage2Bosses = [ ] ;
         { 'bullet': B.darkRing, 'type': T.darkOrb, 'shotCount': [ 0 ],      'baseCount': 140 },
         { 'bullet': B.aimFive,  'type': T.redRice, 'shotCount': [ 50, 90 ], 'baseCount': 140 }
       ],
-      'v': wander( 140, 340, 100, 160, 70, 50 ),
-      'e': { 'darkness': 60 }
+      'v': wander( 140, 340, 100, 160, 70, 50 )
     }
   ] ) ) ;
 
@@ -531,8 +530,7 @@ var __canonStage2Bosses = [ ] ;
         { 'bullet': B.darkRingOff, 'type': T.darkOrb, 'shotCount': [ 80 ],         'baseCount': 160 },
         { 'bullet': B.aimFive,     'type': T.redRice, 'shotCount': [ 40, 50, 60 ], 'baseCount': 160 }
       ],
-      'v': wander( 140, 340, 100, 160, 80, 50 ),
-      'e': { 'darkness': 70 }
+      'v': wander( 140, 340, 100, 160, 80, 50 )
     },
     {
       // her darkness gets huge and the bullets only show up once they crawl out of it
@@ -558,8 +556,7 @@ var __canonStage2Bosses = [ ] ;
         { 'bullet': B.ringTwelveOff, 'type': T.bigDark, 'shotCount': [ 30, 90 ], 'baseCount': 120 },
         { 'bullet': B.aimThree,      'type': T.redRice, 'shotCount': [ 15, 75 ], 'baseCount': 120 }
       ],
-      'v': wander( 120, 360, 90, 150, 60, 40 ),
-      'e': { 'darkness': 70 }
+      'v': wander( 120, 360, 90, 150, 60, 40 )
     },
     {
       // rumia spreads her arms like a cross and spins the cross around
