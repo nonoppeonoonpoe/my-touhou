@@ -460,6 +460,9 @@ Fighter.prototype.decrementPower = function( num ) {
 
 // after a respawn she's drawn flying back up from below, only for looks
 Fighter.prototype.getDrawY = function( ) {
+  var clearLift = this.gameState.getClearLift ? this.gameState.getClearLift( ) : 0 ;
+  if( clearLift > 0 )
+    return this.getY( ) - clearLift ;
   var flyTime = ( this.count - this.deadCount ) / 40 ;
   if( this.deadCount <= 0 || flyTime >= 1 || this.gameState.viewFromFighter )
     return this.getY( ) ;
