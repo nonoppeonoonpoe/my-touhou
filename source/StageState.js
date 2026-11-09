@@ -1283,6 +1283,10 @@ StageState.prototype.notifyBossVanished = function( boss ) {
 
 
 StageState.prototype.notifyBossVanishEnd = function( boss ) {
+  if( boss.talkAfter ) {
+    this._startTalk( boss.talkAfter, 'clear', boss ) ;
+    return ;
+  }
   if( boss.vanishedTalk ) {
     this.state = this._STATE_TALK ;
     this.fighterManager.beNeutral( ) ;
@@ -1515,7 +1519,39 @@ StageState.prototype.notifyBossBecameActive = function( boss ) {
 } ;
 
 
+// a named talk from __talkScenes. after it ends: 'fight' starts the boss, 'clear' clears the stage, 'resume' just goes on
+StageState.prototype._startTalk = function( sceneName, afterTalk, boss ) {
+  var scene = __talkScenes[ sceneName ] ;
+  if( ! scene ) {
+    this._afterTalk( afterTalk, boss ) ;
+    return ;
+  }
+  this.states[ this._STATE_TALK ].start( scene, afterTalk, boss ) ;
+  this.notifyBeginTalk( ) ;
+} ;
+
+
+StageState.prototype._afterTalk = function( afterTalk, boss ) {
+  if( afterTalk == 'clear' )
+    this.notifyStageClear( ) ;
+  else if( afterTalk == 'fight' )
+    this.notifyBossBecameActive( boss ) ;
+  else
+    this.state = this._STATE_SHOOTING ;
+} ;
+
+
+// a mid-boss saying something on her way out
+StageState.prototype.notifyBossEscapeTalk = function( boss ) {
+  this._startTalk( boss.talkAfter, 'resume', boss ) ;
+} ;
+
+
 StageState.prototype.notifyBossBeginTalk = function( boss ) {
+  if( boss.talkBefore ) {
+    this._startTalk( boss.talkBefore, 'fight', boss ) ;
+    return ;
+  }
   // TODO: temporal
   if( boss.appearedTalk ) {
     this.state = this._STATE_TALK ;
@@ -2380,10 +2416,32 @@ function TalkState( stage ) {
 __inherit( TalkState, StageAbstractState ) ;
 
 
+TalkState._NAMES = { 'daiyousei': 'Daiyousei' } ;
+
+
 TalkState.prototype.reset = function( ) {
   this.stageIndex = 0 ;
   this.sceneIndex = 0 ;
   this.index = 0 ;
+  this.scene = null ;
+  this.afterTalk = null ;
+  this.talkBoss = null ;
+} ;
+
+
+TalkState.prototype.start = function( scene, afterTalk, boss ) {
+  this.scene = scene ;
+  this.afterTalk = afterTalk ;
+  this.talkBoss = boss ;
+  this.index = 0 ;
+} ;
+
+
+// the lines for the girl being played, from a named talk or the old stage by stage list
+TalkState.prototype._getLines = function( ) {
+  if( this.scene )
+    return this.scene[ this.stage.fighter.characterIndex ] ;
+  return this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ] ;
 } ;
 
 
@@ -2397,6 +2455,16 @@ TalkState.prototype.handleKeyDown = function( e ) {
     case 90: // z
       p.push( 'z' ) ;
       this.index++ ;
+      if( this.scene ) {
+        if( this.index >= this._getLines( ).length ) {
+          var afterTalk = this.afterTalk ;
+          var talkBoss = this.talkBoss ;
+          this.scene = null ;
+          this.index = 0 ;
+          this.stage._afterTalk( afterTalk, talkBoss ) ;
+        }
+        break ;
+      }
       // TODO: temporal
       if( this.index >= this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ].length ) {
         this.sceneIndex++ ;
@@ -2420,8 +2488,9 @@ TalkState.prototype.handleKeyUp = function( e ) {
 
 
 TalkState.prototype.updateDisplay = function( surface ) {
-  this._displayStandUp( surface, this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ][ this.index ].left,  120,  0 ) ;
-  this._displayStandUp( surface, this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ][ this.index ].right, 360,  0 ) ;
+  var line = this._getLines( )[ this.index ] ;
+  this._displayStandUp( surface, line.left,  120,  0 ) ;
+  this._displayStandUp( surface, line.right, 360,  0 ) ;
   this._displaySerifWindow( surface ) ;
   this._displaySerif( surface ) ;
 } ;
@@ -2477,7 +2546,17 @@ TalkState.prototype._displaySerif = function( surface ) {
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.textAlign = 'left' ;
   surface.font = '16px Arial' ;
-  var array = this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ][ this.index ].serif.split( '\n' ) ;
+  var line = this._getLines( )[ this.index ] ;
+  var array = line.serif.split( '\n' ) ;
+  // someone with no portrait gets her name over the text so you know who's talking
+  var speaker = line.right && line.right.active ? line.right.character : null ;
+  if( speaker && Game._CHARACTERS[ speaker ] && Game._CHARACTERS[ speaker ].stand === null ) {
+    surface.fillStyle = 'rgb( 160, 255, 170 )' ;
+    surface.font = 'bold 14px Arial' ;
+    surface.fillText( TalkState._NAMES[ speaker ] || speaker, 60, 366 ) ;
+    surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+    surface.font = '16px Arial' ;
+  }
   for( var i = 0; i < array.length; i++ ) {
     surface.fillText( array[ i ], 60, 380 + i * 20) ;
   }

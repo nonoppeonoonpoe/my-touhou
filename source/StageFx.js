@@ -7,6 +7,10 @@ function StageFx( stage ) {
   this.stage = stage ;
   this.parts = [ ] ;
   this.flashAlpha = 0 ;
+  this.darkRadius = 0 ;
+  this.darkX = 0 ;
+  this.darkY = 0 ;
+  this.darkCount = 0 ;
 }
 
 StageFx.prototype._MAX_PARTS = 400 ;
@@ -15,6 +19,7 @@ StageFx.prototype._MAX_PARTS = 400 ;
 StageFx.prototype.reset = function( ) {
   this.parts.length = 0 ;
   this.flashAlpha = 0 ;
+  this.darkRadius = 0 ;
 } ;
 
 
@@ -84,6 +89,7 @@ StageFx.prototype.flash = function( strength ) {
 
 
 StageFx.prototype.runStep = function( ) {
+  this._updateDarkness( ) ;
   var aliveParts = 0 ;
   for( var i = 0; i < this.parts.length; i++ ) {
     var part = this.parts[ i ] ;
@@ -169,26 +175,38 @@ StageFx.prototype._drawPart = function( surface, part ) {
 } ;
 
 
-// rumia hides inside a ball of darkness, bigger during some of her attacks
-StageFx.prototype._drawDarkness = function( surface ) {
+// rumia's darkness grows in when a spell card starts and shrinks away when it ends
+StageFx.prototype._updateDarkness = function( ) {
+  var darkTarget = 0 ;
   var bossManager = this.stage.bossManager ;
-  if( ! bossManager || ! bossManager.existBoss( ) )
+  if( bossManager && bossManager.existBoss( ) ) {
+    var darkBoss = bossManager.getBoss( ) ;
+    if( darkBoss.effects && darkBoss.effects.darkness && ! darkBoss.isVanishingOrEscaping( ) )
+      darkTarget = darkBoss.effects.darkness ;
+    this.darkX = darkBoss.getX( ) ;
+    this.darkY = darkBoss.getY( ) ;
+    this.darkCount = darkBoss.count ;
+  }
+  this.darkRadius += ( darkTarget - this.darkRadius ) * 0.05 ;
+  if( darkTarget == 0 && this.darkRadius < 2 )
+    this.darkRadius = 0 ;
+} ;
+
+
+StageFx.prototype._drawDarkness = function( surface ) {
+  if( this.darkRadius <= 0 )
     return ;
-  var darkBoss = bossManager.getBoss( ) ;
-  if( ! darkBoss.effects || ! darkBoss.effects.darkness || darkBoss.isVanishingOrEscaping( ) )
-    return ;
-  var darkRadius = darkBoss.effects.darkness ;
   // it wobbles a little so it looks alive
-  darkRadius = darkRadius + Math.sin( darkBoss.count / 9 ) * darkRadius * 0.06 ;
-  var darkGlow = surface.createRadialGradient( darkBoss.getX( ), darkBoss.getY( ), darkRadius * 0.15,
-                                               darkBoss.getX( ), darkBoss.getY( ), darkRadius ) ;
+  var darkSize = this.darkRadius + Math.sin( this.darkCount / 9 ) * this.darkRadius * 0.06 ;
+  var darkGlow = surface.createRadialGradient( this.darkX, this.darkY, darkSize * 0.15,
+                                               this.darkX, this.darkY, darkSize ) ;
   darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
   darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
   darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
   surface.globalAlpha = 1 ;
   surface.fillStyle = darkGlow ;
   surface.beginPath( ) ;
-  surface.arc( darkBoss.getX( ), darkBoss.getY( ), darkRadius, 0, Math.PI * 2 ) ;
+  surface.arc( this.darkX, this.darkY, darkSize, 0, Math.PI * 2 ) ;
   surface.fill( ) ;
 } ;
 
