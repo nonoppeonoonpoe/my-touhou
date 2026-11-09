@@ -196,10 +196,20 @@ TitleState = function( opening ) {
   this.state = 0 ;
   this.index = 0 ;
   this.showControls = false ;
+  this.showOptions = false ;
+  this.optionIndex = 0 ;
 }
 __inherit( TitleState, OpeningAbstractState ) ;
 
-TitleState._MENU = [ 'Start', 'Replay', 'Controls' ] ;
+TitleState._MENU = [ 'Start', 'Replay', 'Options', 'Controls' ] ;
+
+// key in game.options, label, lowest, highest
+TitleState._OPTIONS = [
+  [ 'music', 'Music volume', 0, 10 ],
+  [ 'sound', 'Sound volume', 0, 10 ],
+  [ 'lives', 'Starting lives', 0, 8 ],
+  [ 'bombs', 'Starting bombs', 0, 8 ]
+] ;
 
 TitleState._CONTROLS = [
   [ 'Cursor key', 'move / character select' ],
@@ -223,6 +233,8 @@ TitleState.prototype.init = function( ) {
   this.count = 0 ;
   this.index = 0 ;
   this.showControls = false ;
+  this.showOptions = false ;
+  this.optionIndex = 0 ;
   this.state = TitleState._STATE_DISPLAYING ;
   this.soundBGM( Game._BGM_TITLE ) ;
 } ;
@@ -243,6 +255,88 @@ TitleState.prototype.updateDisplay = function( surface ) {
   this._displayMessage( surface ) ;
   this._displayPressKey( surface ) ;
   this._displayControls( surface ) ;
+  this._displayOptions( surface ) ;
+} ;
+
+
+TitleState.prototype._displayOptions = function( surface ) {
+  if( ! this.showOptions )
+    return ;
+
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
+  var options = this.opening.game.options ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.85 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, width, height ) ;
+  surface.globalAlpha = 1.0 ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.textBaseline = 'middle' ;
+
+  surface.font = "28px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.fillText( 'Options', width / 2, 110 ) ;
+  surface.fillRect( width / 2 - 160, 135, 320, 1 ) ;
+
+  surface.font = "20px 'Comic Sans MS'" ;
+  for( var i = 0; i <= TitleState._OPTIONS.length; i++ ) {
+    var lineY = 190 + i * 44 ;
+    surface.globalAlpha = ( i == this.optionIndex ) ? 1.0 : 0.4 ;
+    if( i == TitleState._OPTIONS.length ) {
+      surface.textAlign = 'center' ;
+      surface.fillText( 'Back', width / 2, lineY ) ;
+      continue ;
+    }
+    var row = TitleState._OPTIONS[ i ] ;
+    surface.textAlign = 'right' ;
+    surface.fillText( row[ 1 ], width / 2 + 20, lineY ) ;
+    surface.textAlign = 'left' ;
+    surface.fillText( '<  ' + options[ row[ 0 ] ] + '  >', width / 2 + 50, lineY ) ;
+  }
+
+  surface.font = "16px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.globalAlpha = 0.6 ;
+  surface.fillText( 'Left and right change a setting, X goes back', width / 2, height - 45 ) ;
+  surface.restore( ) ;
+} ;
+
+
+TitleState.prototype._handleOptionsKey = function( e ) {
+  var game = this.opening.game ;
+  var rowNum = TitleState._OPTIONS.length + 1 ;
+  switch( e.keyCode ) {
+    case 38: // up
+      this.optionIndex = ( this.optionIndex + rowNum - 1 ) % rowNum ;
+      this.soundEffect( Game._SE_SELECT ) ;
+      break ;
+    case 40: // down
+      this.optionIndex = ( this.optionIndex + 1 ) % rowNum ;
+      this.soundEffect( Game._SE_SELECT ) ;
+      break ;
+    case 37: // left
+    case 39: // right
+      if( this.optionIndex >= TitleState._OPTIONS.length )
+        break ;
+      var row = TitleState._OPTIONS[ this.optionIndex ] ;
+      var newValue = game.options[ row[ 0 ] ] + ( e.keyCode == 39 ? 1 : -1 ) ;
+      game.options[ row[ 0 ] ] = Math.max( row[ 2 ], Math.min( row[ 3 ], newValue ) ) ;
+      game.saveOptions( ) ;
+      game.applyMusicVolume( ) ;
+      this.soundEffect( Game._SE_SELECT ) ;
+      break ;
+    case 88: // x
+      this.soundEffect( Game._SE_SELECT ) ;
+      this.showOptions = false ;
+      break ;
+    case 90: // z
+      if( this.optionIndex >= TitleState._OPTIONS.length ) {
+        this.soundEffect( Game._SE_SELECT ) ;
+        this.showOptions = false ;
+      }
+      break ;
+  }
 } ;
 
 
@@ -356,6 +450,11 @@ TitleState.prototype._displayPressKey = function( surface ) {
 
 
 TitleState.prototype.handleKeyDown = function( e ) {
+  if( this.showOptions ) {
+    this._handleOptionsKey( e ) ;
+    return ;
+  }
+
   if( this.showControls ) {
     if( e.keyCode == 90 || e.keyCode == 88 ) { // z, x
       this.soundEffect( Game._SE_SELECT ) ;
@@ -372,7 +471,10 @@ TitleState.prototype.handleKeyDown = function( e ) {
           this.opening.notifyTitleConclusion( ) ;
         else if( this.index == 1 )
           this.opening.notifyReplaySelectBegin( ) ;
-        else
+        else if( this.index == 2 ) {
+          this.showOptions = true ;
+          this.optionIndex = 0 ;
+        } else
           this.showControls = true ;
       } else {
         this.state = TitleState._STATE_DISPLAYED ;
