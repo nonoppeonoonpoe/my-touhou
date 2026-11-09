@@ -9,6 +9,8 @@ __inherit( CharacterSelectState, GameState ) ;
 
 
 CharacterSelectState._APPEAR_SPAN = 10 ;
+CharacterSelectState._SLIDE_SPAN = 28 ;
+CharacterSelectState._CONFIRM_SPAN = 24 ;
 
 CharacterSelectState.prototype.init = function( ) {
   this.count = 0 ;
@@ -19,11 +21,27 @@ CharacterSelectState.prototype.init = function( ) {
     this.elements[ i ].height = 600 ;
   }
   this.index = 0 ;
+  this.focus = [ 1, 0 ] ;
+  this.infoCount = 0 ;
+  this.confirmCount = 0 ;
 } ;
 
 
 CharacterSelectState.prototype.runStep = function( ) {
   this.count++ ;
+  this.infoCount++ ;
+  for( var i = 0; i < 2; i++ ) {
+    var targetFocus = i == this.index ? 1 : 0 ;
+    this.focus[ i ] += ( targetFocus - this.focus[ i ] ) * 0.2 ;
+  }
+  // after picking, wait for the flash before the stage starts
+  if( this.confirmCount > 0 ) {
+    this.confirmCount++ ;
+    if( this.confirmCount > CharacterSelectState._CONFIRM_SPAN ) {
+      this.confirmCount = 0 ;
+      this.game.notifyCharacterSelectConclusion( this.index ) ;
+    }
+  }
 } ;
 
 
@@ -32,6 +50,21 @@ CharacterSelectState.prototype.updateDisplay = function( surface ) {
   this._displayBG( surface ) ;
   this._displayMessage( surface ) ;
   this._displayCharacters( surface ) ;
+  this._displayFlash( surface ) ;
+} ;
+
+
+CharacterSelectState.prototype._displayFlash = function( surface ) {
+  if( this.confirmCount <= 0 )
+    return ;
+  surface.save( ) ;
+  surface.globalAlpha = 0.8 * ( 1 - __easeOut( this.confirmCount / 12 ) ) ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillRect( 0, 0, this.getWidth( ), this.getHeight( ) ) ;
+  surface.globalAlpha = __easeInOut( __animTime( this.confirmCount, 10, CharacterSelectState._CONFIRM_SPAN - 10 ) ) ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, 0, this.getWidth( ), this.getHeight( ) ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -66,7 +99,9 @@ CharacterSelectState.prototype._displayMessage = function( surface ) {
   surface.textAlign = 'center' ;
   surface.textBaseAlign = 'middle' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillText( 'Character Select', this.getWidth( ) / 2, 35 ) ;
+  var titleTime = __easeOut( __animTime( this.count, 0, 20 ) ) ;
+  surface.globalAlpha = titleTime ;
+  surface.fillText( 'Character Select', this.getWidth( ) / 2, 35 - 20 * ( 1 - titleTime ) ) ;
   surface.restore( ) ;
 } ;
 
@@ -92,12 +127,16 @@ CharacterSelectState.prototype._displayMoves = function( surface ) {
   var moveLines = CharacterSelectState._MOVE_LINES[ this.index ] ;
   var boxWidth = 300 ;
   var boxLeft = this.index == 0 ? this.getWidth( ) - boxWidth - 20 : 20 ;
-  var boxTop = this.getHeight( ) - 180 ;
+  // the box slides up again every time the pick changes
+  var boxTime = __easeOut( __animTime( this.infoCount, 0, 16 ) ) ;
+  var boxTop = this.getHeight( ) - 180 + 40 * ( 1 - boxTime ) ;
   surface.save( ) ;
-  surface.globalAlpha = 0.7 ;
+  surface.globalAlpha = 0.7 * boxTime ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
   surface.fillRect( boxLeft, boxTop, boxWidth, 130 ) ;
-  surface.globalAlpha = 1.0 ;
+  surface.globalAlpha = boxTime ;
+  surface.fillStyle = this.index == 0 ? 'rgb( 220, 50, 60 )' : 'rgb( 240, 200, 60 )' ;
+  surface.fillRect( boxLeft, boxTop, 4, 130 * boxTime ) ;
   surface.textAlign = 'left' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.font = 'bold 18px Arial' ;
@@ -112,54 +151,47 @@ CharacterSelectState.prototype._displayMoves = function( surface ) {
 
 
 CharacterSelectState.prototype._displayCharacters = function( surface ) {
-  surface.save( ) ;
+  // the one not picked goes behind
   if( this.index == 0 ) {
-    surface.globalAlpha = 0.6 ;
-    this._displayMarisa( surface ) ;
-    surface.globalAlpha = 1.0 ;
-    this._displayReimu( surface ) ;
+    this._displayStand( surface, 1 ) ;
+    this._displayStand( surface, 0 ) ;
   } else {
-    surface.globalAlpha = 0.6 ;
-    this._displayReimu( surface ) ;
-    surface.globalAlpha = 1.0 ;
-    this._displayMarisa( surface ) ;
+    this._displayStand( surface, 0 ) ;
+    this._displayStand( surface, 1 ) ;
   }
-  surface.restore( ) ;
   this._displayMoves( surface ) ;
 } ;
 
 
-CharacterSelectState.prototype._displayReimu = function( surface ) {
-  surface.save( ) ;
-  var target = 0 ;
-  var from = this.getWidth( ) ;
-  var w = from - ( from - target ) * this.count / CharacterSelectState._APPEAR_SPAN ;
-  if( w < target )
-    w = target ;
-  surface.drawImage( this.game.getImage( Game._IMG_STAND_REIMU ),
-                     w,
-                     0 ) ;
-  surface.restore( ) ;
-} ;
+// reimu comes from the right, marisa from the left. the picked one
+// steps toward the middle and lights up, the other dims
+CharacterSelectState.prototype._displayStand = function( surface, charaNum ) {
+  var standWidth = this.elements[ charaNum ].width ;
+  var standHeight = this.elements[ charaNum ].height ;
+  var restX = charaNum == 0 ? 0 : this.getWidth( ) - standWidth ;
+  var fromX = charaNum == 0 ? this.getWidth( ) : -standWidth ;
+  var slideTime = __easeOut( __animTime( this.count, charaNum * 4, CharacterSelectState._SLIDE_SPAN ) ) ;
+  var focus = this.focus[ charaNum ] ;
+  var stepX = ( charaNum == 0 ? 1 : -1 ) * 16 * focus ;
+  var standX = fromX + ( restX - fromX ) * slideTime + stepX ;
+  var standScale = 0.96 + 0.04 * focus ;
+  if( this.confirmCount > 0 && charaNum == this.index )
+    standScale += 0.05 * __easeOut( this.confirmCount / 14 ) ;
 
-
-CharacterSelectState.prototype._displayMarisa = function( surface ) {
   surface.save( ) ;
-  var target = this.getWidth( ) - this.elements[ 1 ].width ;
-  var from = -this.elements[ 1 ].width ;
-  var w = from - ( from - target ) * this.count / CharacterSelectState._APPEAR_SPAN ;
-  if( w > target )
-    w = target ;
-  surface.drawImage( this.game.getImage( Game._IMG_STAND_MARISA ),
-                     w,
-                     0 ) ;
+  surface.globalAlpha = slideTime * ( 0.45 + 0.55 * focus ) ;
+  surface.translate( standX + standWidth / 2, standHeight ) ;
+  surface.scale( standScale, standScale ) ;
+  surface.drawImage( this.game.getImage( charaNum == 0 ? Game._IMG_STAND_REIMU : Game._IMG_STAND_MARISA ),
+                     -standWidth / 2,
+                     -standHeight ) ;
   surface.restore( ) ;
 } ;
 
 
 CharacterSelectState.prototype.handleKeyDown = function( e ) {
   // TODO: temporal
-  if( this.count < CharacterSelectState._APPEAR_SPAN )
+  if( this.count < CharacterSelectState._APPEAR_SPAN || this.confirmCount > 0 )
     return ;
 
   switch( e.keyCode ) {
@@ -168,18 +200,26 @@ CharacterSelectState.prototype.handleKeyDown = function( e ) {
       if( this.index > 1 )
         this.index = 0 ;
       this._soundEffect( Game._SE_SELECT ) ;
+      this.infoCount = 0 ;
       break ;
     case 39: // right
       this.index-- ;
       if( this.index < 0 )
         this.index = 1 ;
       this._soundEffect( Game._SE_SELECT ) ;
+      this.infoCount = 0 ;
       break ;
     case 88: // x
       this.game.notifyLoadingConclusion( this.index ) ; // TODO: temporal
       break ;
     case 90: // z
-      this.game.notifyCharacterSelectConclusion( this.index ) ;
+      // online play has to answer right away to stay in sync
+      if( this.game.isMultiPlay( ) )
+        this.game.notifyCharacterSelectConclusion( this.index ) ;
+      else {
+        this._soundEffect( Game._SE_SELECT ) ;
+        this.confirmCount = 1 ;
+      }
       break ;
   } ;
 } ;

@@ -159,6 +159,11 @@ FighterView.prototype.animate = function() {
 };
 
 
+FighterView.prototype._getElementY = function() {
+  return this.element.getDrawY();
+};
+
+
 FighterView.prototype.doRotateForViewpoint = function() {
   return true;
 };
@@ -450,6 +455,15 @@ Fighter.prototype.decrementPower = function( num ) {
   if( this.power < 0 )
     this.power = 0 ;
   this.powerLevel = this._calculatePowerLevel( this.power ) ;
+} ;
+
+
+// after a respawn she's drawn flying back up from below, only for looks
+Fighter.prototype.getDrawY = function( ) {
+  var flyTime = ( this.count - this.deadCount ) / 40 ;
+  if( this.deadCount <= 0 || flyTime >= 1 || this.gameState.viewFromFighter )
+    return this.getY( ) ;
+  return this.getY( ) + 90 * ( 1 - __easeOut( flyTime ) ) ;
 } ;
 
 

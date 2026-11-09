@@ -46,6 +46,8 @@ PostReplayState.prototype._encode = function( data ) {
 
 PostReplayState.prototype.runStep = function( ) {
   this.count++ ;
+  var barTarget = this.index == 0 ? 200 : 250 ;
+  this.barY = this.count <= 1 ? barTarget : this.barY + ( barTarget - this.barY ) * 0.3 ;
   // show saved (or the error) for a moment, then back to the title
   if( this.state != PostReplayState._STATE_SELECT && this.count - this.doneCount > 60 )
     this.game.notifyQuitStage( ) ;
@@ -98,11 +100,12 @@ PostReplayState.prototype._displayMessage = function( surface ) {
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   surface.fillText( 'Replay', this.getWidth( ) / 2, 35 ) ;
 
-  // TODO: temporal
-  if( this.state == PostReplayState._STATE_REPLAY_POSTING ) {
-    surface.fillText( 'Saved', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
-  } else if( this.state == PostReplayState._STATE_REPLAY_POSTING_ERROR ) {
-    surface.fillText( 'Could not save it', this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
+  // the answer pops in
+  if( this.state != PostReplayState._STATE_SELECT ) {
+    var popScale = 0.3 + 0.7 * __easeBack( ( this.count - this.doneCount ) / 14 ) ;
+    surface.translate( this.getWidth( ) / 2, this.getHeight( ) / 2 ) ;
+    surface.scale( popScale, popScale ) ;
+    surface.fillText( this.state == PostReplayState._STATE_REPLAY_POSTING ? 'Saved' : 'Could not save it', 0, 0 ) ;
   }
 
   surface.restore( ) ;
@@ -116,19 +119,25 @@ PostReplayState.prototype._displayQuestion = function( surface ) {
   surface.textAlign = 'center' ;
   surface.textBaseAlign = 'middle' ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
-  surface.fillText( 'Will you save your replay?', this.getWidth( ) / 2, 100 ) ;
+  var askTime = __easeOut( __animTime( this.count, 0, 18 ) ) ;
+  surface.globalAlpha = askTime ;
+  surface.fillText( 'Will you save your replay?', this.getWidth( ) / 2, 100 - 20 * ( 1 - askTime ) ) ;
 
-  if( this.index == 0 )
-    surface.globalAlpha = 1.0 ;
-  else
-    surface.globalAlpha = 0.4 ;
-  surface.fillText( 'Yes', this.getWidth( ) / 2, 200 ) ;
+  var barGradient = surface.createLinearGradient( this.getWidth( ) / 2 - 120, 0, this.getWidth( ) / 2 + 120, 0 ) ;
+  barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0 )' ) ;
+  barGradient.addColorStop( 0.5, 'rgba( 220, 60, 80, 0.5 )' ) ;
+  barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
+  surface.globalAlpha = __easeOut( __animTime( this.count, 10, 14 ) ) ;
+  surface.fillStyle = barGradient ;
+  surface.fillRect( this.getWidth( ) / 2 - 120, this.barY - 30, 240, 40 ) ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
 
-  if( this.index == 1 )
-    surface.globalAlpha = 1.0 ;
-  else
-    surface.globalAlpha = 0.4 ;
-  surface.fillText( 'No', this.getWidth( ) / 2, 250 ) ;
+  var answers = [ 'Yes', 'No' ] ;
+  for( var i = 0; i < answers.length; i++ ) {
+    var answerTime = __easeOut( __animTime( this.count, 8 + i * 5, 16 ) ) ;
+    surface.globalAlpha = ( this.index == i ? 1.0 : 0.4 ) * answerTime ;
+    surface.fillText( answers[ i ], this.getWidth( ) / 2 - 40 * ( 1 - answerTime ), 200 + i * 50 ) ;
+  }
 
   surface.restore( ) ;
 } ;
