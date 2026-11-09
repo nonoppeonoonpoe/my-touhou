@@ -307,11 +307,19 @@ TitleState.prototype._displayPractice = function( surface ) {
   surface.fillText( 'Practice', width / 2, 90 ) ;
   surface.fillRect( width / 2 - 160, 115, 320, 1 ) ;
 
+  // only part of the list fits, so it scrolls with the cursor
+  var shownRows = 9 ;
+  var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, practiceList.length - shownRows ) ) ;
   surface.font = "18px 'Comic Sans MS'" ;
-  for( var i = 0; i < practiceList.length; i++ ) {
+  for( var i = firstRow; i < practiceList.length && i < firstRow + shownRows; i++ ) {
     surface.globalAlpha = ( i == this.practiceIndex ) ? 1.0 : 0.4 ;
-    surface.fillText( practiceList[ i ].label, width / 2, 150 + i * 30 ) ;
+    surface.fillText( practiceList[ i ].label, width / 2, 150 + ( i - firstRow ) * 30 ) ;
   }
+  surface.globalAlpha = 0.6 ;
+  if( firstRow > 0 )
+    surface.fillText( '...', width / 2, 128 ) ;
+  if( firstRow + shownRows < practiceList.length )
+    surface.fillText( '...', width / 2, 150 + shownRows * 30 - 8 ) ;
 
   surface.font = "16px 'Comic Sans MS'" ;
   surface.globalAlpha = 0.6 ;

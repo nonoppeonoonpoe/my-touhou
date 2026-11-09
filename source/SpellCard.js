@@ -28,7 +28,6 @@ __inherit( SpellCardFactory, ElementFactory ) ;
 
 SpellCardFactory.prototype._NUM = 10 ;
 SpellCardFactory.prototype._FIGHTER_IMAGES = [ Game._IMG_STAND_REIMU, Game._IMG_STAND_MARISA ] ;
-SpellCardFactory.prototype._ENEMY_IMAGES   = [ Game._IMG_STAND_MOKOU, Game._IMG_STAND_RUMIA, Game._IMG_STAND_CHILNO ] ;
 SpellCardFactory.prototype._PARAMS = [
   { 'x': 240, 'y': 240, 'v': { 'r': 3, 'theta':150, 'raa': -0.005, 'rrange': { 'min': 1 } } },
   { 'x': 240, 'y': 240, 'v': { 'r': 3, 'theta': 30, 'raa': -0.005, 'rrange': { 'min': 1 } } },
@@ -59,17 +58,11 @@ SpellCardFactory.prototype._getImage = function( element ) {
     image.width = 400 ;
   } else {
     vector = { 'r': 3, 'theta': 30, 'raa': -0.005, 'rrange': { 'min': 1 } } ;
-    // TODO: temporary
-    if( element.character == 'rumia' ) {
-      image = this.gameState.getImage( this._ENEMY_IMAGES[ 1 ] ) ;
-      image.width = 600 ;
-    } else if( element.character == 'chilno' ) {
-      image = this.gameState.getImage( this._ENEMY_IMAGES[ 2 ] ) ;
-      image.width = 550 ;
-    } else {
-      image = this.gameState.getImage( this._ENEMY_IMAGES[ 0 ] ) ;
-      image.width = 512 ;
-    }
+    var character = Game._CHARACTERS[ element.character ] ;
+    if( ! character || character.stand === null )
+      character = Game._CHARACTERS.mokou ;
+    image = this.gameState.getImage( character.stand ) ;
+    image.width = character.standWidth ;
   }
   return image ;
 } ;

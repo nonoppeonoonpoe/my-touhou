@@ -133,6 +133,11 @@ Game._IMG_STAND_MOKOU     = 35;
 Game._IMG_STAND_RUMIA     = 36;
 Game._IMG_STAND_CHILNO    = 37;
 Game._IMG_TITLE_BG        = 38;
+Game._IMG_ENEMY_KOGASA    = 39;
+Game._IMG_ENEMY_KEINE     = 40;
+Game._IMG_STAND_KOGASA    = 41;
+Game._IMG_STAND_KEINE     = 42;
+Game._IMG_BG3             = 43;
 
 Game._IMGS = { } ;
 Game._IMGS[Game._IMG_FIGHTER]            = 'image/fighter.png';
@@ -174,6 +179,26 @@ Game._IMGS[ Game._IMG_STAND_MOKOU ]      = 'image/mokou_stand.png' ;
 Game._IMGS[ Game._IMG_STAND_RUMIA ]      = 'image/rumia_stand.png' ;
 Game._IMGS[ Game._IMG_STAND_CHILNO ]     = 'image/chilno_stand.png' ;
 Game._IMGS[ Game._IMG_TITLE_BG ]         = 'image/title_bg.png' ;
+Game._IMGS[ Game._IMG_ENEMY_KOGASA ]     = 'image/kogasa.png' ;
+Game._IMGS[ Game._IMG_ENEMY_KEINE ]      = 'image/keine.png' ;
+Game._IMGS[ Game._IMG_STAND_KOGASA ]     = 'image/kogasa_stand.png' ;
+Game._IMGS[ Game._IMG_STAND_KEINE ]      = 'image/keine_stand.png' ;
+Game._IMGS[ Game._IMG_BG3 ]              = 'image/bg3.png' ;
+
+// boss sprite sheet and portrait for each character, portraits are drawn at standWidth x 600
+Game._CHARACTERS = {
+  'reimu':     { 'sheet': null,                      'stand': Game._IMG_STAND_REIMU,  'standWidth': 400 },
+  'marisa':    { 'sheet': null,                      'stand': Game._IMG_STAND_MARISA, 'standWidth': 400 },
+  'mokou':     { 'sheet': Game._IMG_ENEMY_MOKOU,     'stand': Game._IMG_STAND_MOKOU,  'standWidth': 512 },
+  'rumia':     { 'sheet': Game._IMG_ENEMY_RUMIA,     'stand': Game._IMG_STAND_RUMIA,  'standWidth': 600 },
+  'daiyousei': { 'sheet': Game._IMG_ENEMY_DAIYOUSEI, 'stand': null,                   'standWidth': 600 },
+  'chilno':    { 'sheet': Game._IMG_ENEMY_CHILNO,    'stand': Game._IMG_STAND_CHILNO, 'standWidth': 550 },
+  'kogasa':    { 'sheet': Game._IMG_ENEMY_KOGASA,    'stand': Game._IMG_STAND_KOGASA, 'standWidth': 600 },
+  'keine':     { 'sheet': Game._IMG_ENEMY_KEINE,     'stand': Game._IMG_STAND_KEINE,  'standWidth': 600 }
+} ;
+
+// one background per stage, in order
+Game._STAGE_BGS = [ Game._IMG_BG1, Game._IMG_BG2, Game._IMG_BG3 ] ;
 
 Game._BGM_TITLE  = 0 ;
 Game._BGM_1      = 1 ;
