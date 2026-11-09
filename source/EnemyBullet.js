@@ -1015,6 +1015,40 @@ EnemyBeam.prototype.runStep = function() {
 };
 
 
+/*
+ * a beam is a trail of points, so it hits along the whole trail
+ * instead of only around its head
+ */
+__copyParentMethod(EnemyBeam, Element, 'checkCollision');
+EnemyBeam.prototype.checkCollision = function(e) {
+  if(this.gameState.oldRules || ! e.hitRadius || this.histories.length < 2)
+    return this.Element_checkCollision(e);
+  if(this.isDead())
+    return false;
+  var targetX = e.getCenterX();
+  var targetY = e.getCenterY();
+  var hitDistance = this.width * 0.35 + e.hitRadius;
+  var hitSquared = hitDistance * hitDistance;
+  for(var i = 0; i < this.histories.length - 1; i++) {
+    var ax = this.histories[i].x;
+    var ay = this.histories[i].y;
+    var segX = this.histories[i+1].x - ax;
+    var segY = this.histories[i+1].y - ay;
+    var segLength = segX * segX + segY * segY;
+    var along = segLength > 0 ? ((targetX - ax) * segX + (targetY - ay) * segY) / segLength : 0;
+    if(along < 0)
+      along = 0;
+    else if(along > 1)
+      along = 1;
+    var offX = targetX - (ax + segX * along);
+    var offY = targetY - (ay + segY * along);
+    if(offX * offX + offY * offY < hitSquared)
+      return true;
+  }
+  return false;
+};
+
+
 EnemyBeam.prototype._addHistory = function() {
 
   var h = this.hFreelist.get();

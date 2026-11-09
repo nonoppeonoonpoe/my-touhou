@@ -74,9 +74,10 @@ StageFx.prototype.popWords = function( x, y, text, color ) {
 } ;
 
 
+// past the limit new parts are just skipped, moving the whole list was slow
 StageFx.prototype._add = function( part ) {
   if( this.parts.length >= this._MAX_PARTS )
-    this.parts.shift( ) ;
+    return ;
   part.age = 0 ;
   this.parts.push( part ) ;
 } ;
@@ -387,21 +388,32 @@ StageFx.prototype._updateDarkness = function( ) {
 } ;
 
 
+// the darkness ball is drawn once into its own canvas and then just stretched
+StageFx.prototype._getDarkImage = function( ) {
+  if( this.darkImage )
+    return this.darkImage ;
+  var darkCanvas = document.createElement( 'canvas' ) ;
+  darkCanvas.width = 256 ;
+  darkCanvas.height = 256 ;
+  var darkCtx = darkCanvas.getContext( '2d' ) ;
+  var darkGlow = darkCtx.createRadialGradient( 128, 128, 128 * 0.15, 128, 128, 128 ) ;
+  darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
+  darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
+  darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
+  darkCtx.fillStyle = darkGlow ;
+  darkCtx.fillRect( 0, 0, 256, 256 ) ;
+  this.darkImage = darkCanvas ;
+  return darkCanvas ;
+} ;
+
+
 StageFx.prototype._drawDarkness = function( surface ) {
   if( this.darkRadius <= 0 )
     return ;
   // it wobbles a little so it looks alive
   var darkSize = this.darkRadius + Math.sin( this.darkCount / 9 ) * this.darkRadius * 0.06 ;
-  var darkGlow = surface.createRadialGradient( this.darkX, this.darkY, darkSize * 0.15,
-                                               this.darkX, this.darkY, darkSize ) ;
-  darkGlow.addColorStop( 0, 'rgba(0, 0, 0, 0.55)' ) ;
-  darkGlow.addColorStop( 0.6, 'rgba(0, 0, 0, 0.9)' ) ;
-  darkGlow.addColorStop( 1, 'rgba(0, 0, 0, 0)' ) ;
   surface.globalAlpha = 1 ;
-  surface.fillStyle = darkGlow ;
-  surface.beginPath( ) ;
-  surface.arc( this.darkX, this.darkY, darkSize, 0, Math.PI * 2 ) ;
-  surface.fill( ) ;
+  surface.drawImage( this._getDarkImage( ), this.darkX - darkSize, this.darkY - darkSize, darkSize * 2, darkSize * 2 ) ;
 } ;
 
 

@@ -755,8 +755,39 @@ StageState.prototype._displayStageTitle = function( surface ) {
 /**
  * TODO: remove strings?
  */
+/*
+ * the side panel only changes when one of its numbers or the face does,
+ * so it's drawn into its own canvas and that canvas is reused
+ */
 StageState.prototype._drawSide = function(surface) {
-  var sideX = this.getWidth();
+  if(this.game.debug) {
+    this._drawSidePanel(surface, this.getWidth());
+    return;
+  }
+  var shownHiScore = Math.max(this.hiScore || 0, this.viewScore);
+  var sideKey = [shownHiScore, this.viewScore, this.players, this.bombs,
+                 this.fighter.isFullPower() ? 'MAX' : this.fighter.getPower(),
+                 this.graze, this.pointItems, this._getFaceImage().src, this.game.scale].join('|');
+  var sideScale = this.game.scale;
+  if(! this.sideCanvas || this.sideCanvasScale != sideScale) {
+    this.sideCanvas = document.createElement('canvas');
+    this.sideCanvas.width = Game._SIDE_WIDTH * sideScale;
+    this.sideCanvas.height = this.getHeight() * sideScale;
+    this.sideCanvasScale = sideScale;
+    this.sideKey = null;
+  }
+  if(sideKey != this.sideKey) {
+    this.sideKey = sideKey;
+    var sideCtx = this.sideCanvas.getContext('2d');
+    sideCtx.setTransform(sideScale, 0, 0, sideScale, 0, 0);
+    sideCtx.clearRect(0, 0, Game._SIDE_WIDTH, this.getHeight());
+    this._drawSidePanel(sideCtx, 0);
+  }
+  surface.drawImage(this.sideCanvas, this.getWidth(), 0, Game._SIDE_WIDTH, this.getHeight());
+};
+
+
+StageState.prototype._drawSidePanel = function(surface, sideX) {
   surface.save();
   surface.fillStyle = 'rgb(0, 0, 0)' ;
   surface.fillRect(sideX, 0, Game._SIDE_WIDTH, this.getHeight());

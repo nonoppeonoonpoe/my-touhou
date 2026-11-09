@@ -211,7 +211,8 @@ TitleState._OPTIONS = [
   [ 'sound', 'Sound volume', 0, 10 ],
   [ 'lives', 'Starting lives', 0, 8 ],
   [ 'bombs', 'Starting bombs', 0, 8 ],
-  [ 'shake', 'Screen shake', 0, 1 ]
+  [ 'shake', 'Screen shake', 0, 1 ],
+  [ 'quality', 'Quality', 0, 1 ]
 ] ;
 
 TitleState._CONTROLS = [
@@ -338,7 +339,7 @@ TitleState.prototype._showPanel = function( ) {
 
 TitleState.prototype._getPanelRowY = function( ) {
   if( this.showOptions )
-    return 190 + this.optionIndex * 40 ;
+    return 180 + this.optionIndex * 36 ;
   if( this.showPractice ) {
     var listSize = this._getPracticeList( ).length ;
     var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, listSize - 9 ) ) ;
@@ -469,7 +470,7 @@ TitleState.prototype._displayOptions = function( surface ) {
 
   surface.font = "20px 'Comic Sans MS'" ;
   for( var i = 0; i <= TitleState._OPTIONS.length; i++ ) {
-    var lineY = 190 + i * 40 ;
+    var lineY = 180 + i * 36 ;
     surface.globalAlpha = ( ( i == this.optionIndex ) ? 1.0 : 0.4 ) * this.panelAlpha ;
     if( i == TitleState._OPTIONS.length ) {
       surface.textAlign = 'center' ;
@@ -480,7 +481,11 @@ TitleState.prototype._displayOptions = function( surface ) {
     surface.textAlign = 'right' ;
     surface.fillText( row[ 1 ], width / 2 + 20, lineY ) ;
     surface.textAlign = 'left' ;
-    var valueText = row[ 0 ] == 'shake' ? ( options.shake ? 'On' : 'Off' ) : options[ row[ 0 ] ] ;
+    var valueText = options[ row[ 0 ] ] ;
+    if( row[ 0 ] == 'shake' )
+      valueText = options.shake ? 'On' : 'Off' ;
+    else if( row[ 0 ] == 'quality' )
+      valueText = options.quality ? 'High' : 'Low' ;
     surface.fillText( '<  ' + valueText + '  >', width / 2 + 50, lineY ) ;
   }
 
@@ -513,6 +518,7 @@ TitleState.prototype._handleOptionsKey = function( e ) {
       game.options[ row[ 0 ] ] = Math.max( row[ 2 ], Math.min( row[ 3 ], newValue ) ) ;
       game.saveOptions( ) ;
       game.applyMusicVolume( ) ;
+      game.applyQuality( ) ;
       this.soundEffect( Game._SE_SELECT ) ;
       break ;
     case 88: // x

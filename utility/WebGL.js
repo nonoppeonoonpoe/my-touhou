@@ -179,6 +179,13 @@ Layer.prototype.setMatrixUniforms = function(gl) {
 }
 
 
+// called after the canvas changes size (the quality option)
+Layer.prototype.resize = function() {
+  this.gl.viewportWidth = this.canvas.width;
+  this.gl.viewportHeight = this.canvas.height;
+};
+
+
 Layer.prototype.viewport = function() {
   this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
 };

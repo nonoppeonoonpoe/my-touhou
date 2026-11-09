@@ -18,6 +18,10 @@ function Game(mainCanvas, bgCanvas) {
   this.bgms = [ ] ;
   this.options = this._loadOptions( ) ;
   this.images = [ ] ;
+  this.mainCanvas = mainCanvas ;
+  this.bgCanvas = bgCanvas ;
+  this.highScale = this.scale ;
+  this.applyQuality( ) ;
 
   this.interval = null ;
   this.oldTIme = null ;
@@ -330,7 +334,7 @@ Game.prototype.applyMusicVolume = function( ) {
  * lives are the spare lives you start with and bombs refill to that on respawn.
  */
 Game._OPTIONS_KEY = 'jstouhou_options' ;
-Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3, 'shake': 1 } ;
+Game._DEFAULT_OPTIONS = { 'music': 5, 'sound': 5, 'lives': 2, 'bombs': 3, 'shake': 1, 'quality': 1 } ;
 
 Game.prototype._loadOptions = function( ) {
   var options = { } ;
@@ -373,6 +377,27 @@ Game.prototype.saveReplay = function( replay ) {
   } catch( err ) {
     return false ;
   }
+} ;
+
+
+/*
+ * high quality draws at the page's full canvas size, low quality draws at
+ * plain 640x480 and lets the browser stretch it, which is far less work
+ */
+Game.prototype.applyQuality = function( ) {
+  var newScale = this.options.quality === 0 ? 1 : this.highScale ;
+  if( newScale == this.scale && this.mainCanvas.width == Game._BASE_WIDTH * newScale )
+    return ;
+  this.scale = newScale ;
+  this.mainCanvas.width = Game._BASE_WIDTH * newScale ;
+  this.mainCanvas.height = Game._BASE_HEIGHT * newScale ;
+  this.surface.setTransform( newScale, 0, 0, newScale, 0, 0 ) ;
+  this.surface._scale = newScale ;
+  var fieldSize = this.bgCanvas.width / this.bgLayer.scale ;
+  this.bgCanvas.width = fieldSize * newScale ;
+  this.bgCanvas.height = fieldSize * newScale ;
+  this.bgLayer.scale = newScale ;
+  this.bgLayer.resize( ) ;
 } ;
 
 
