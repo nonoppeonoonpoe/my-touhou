@@ -209,6 +209,12 @@ Enemy.prototype._LOOKS = {
   'paleyellow': 176 / 48
 } ;
 
+// the two big fairies further down, 64 pixels each
+Enemy.prototype._BIG_LOOKS = {
+  'bigwhite':  224 / 64,
+  'sunflower': 288 / 64
+} ;
+
 
 __copyParentMethod(Enemy, Element, 'init');
 Enemy.prototype.init = function(params, image) {
@@ -254,6 +260,14 @@ Enemy.prototype.init = function(params, image) {
     this.width  = 48;
     this.height = 48;
     this.lookRow = this._LOOKS[params.look];
+    this.indexY = this.lookRow;
+  }
+  if(params.look && this._BIG_LOOKS[params.look]) {
+    this.width  = 64;
+    this.height = 64;
+    this.collisionWidth  = 48;
+    this.collisionHeight = 48;
+    this.lookRow = this._BIG_LOOKS[params.look];
     this.indexY = this.lookRow;
   }
   this.vital      = params.vital      !== void 0 ? params.vital      : 4; // TODO: temporal

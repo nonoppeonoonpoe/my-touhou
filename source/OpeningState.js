@@ -221,6 +221,7 @@ TitleState._CONTROLS = [
   [ 'Z', 'shot / ok' ],
   [ 'X', 'bomb / cancel' ],
   [ 'Shift', 'slow' ],
+  [ 'Ctrl', 'hold to skip dialogue' ],
   [ 'Space', 'character change (for debug)' ],
   [ 'Y', 'viewpoint change' ]
 ] ;
