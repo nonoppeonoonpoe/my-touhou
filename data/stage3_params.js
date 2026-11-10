@@ -325,15 +325,15 @@ var __stage3EnemiesParams = [ ] ;
   for( var sneak = 0; sneak < 10; sneak++ ) {
     var leftSide = sneak % 2 == 0 ;
     list.push( {
-      'count': 2120 + sneak * 26,
+      'count': 2080 + sneak * 18,
       'x': leftSide ? 8 : 472,
       'y': 470,
       'look': 'paleblue',
       'vital': 4,
       'powerItem': sneak % 3 == 0 ? 1 : 0,
       'scoreItem': sneak % 3 != 0 ? 1 : 0,
-      's': { 'bullet': B.stones, 'type': T.grayOrb, 'shotCount': [ 50, 95 ] },
-      'v': { 'r': 2, 'theta': leftSide ? 295 : 245 }
+      's': { 'bullet': B.stones, 'type': T.grayOrb, 'shotCount': [ 30, 65 ] },
+      'v': { 'r': 3.2, 'theta': leftSide ? 295 : 245 }
     } ) ;
   }
 
@@ -464,7 +464,7 @@ var __stage3BossParams = [ ] ;
   var T = __stage3Types ;
 
   __stage3BossParams.push( {
-    'count': 2420,
+    'count': 2460,
     'character': 'kogasa',
     'width': 128,
     'height': 128,
@@ -490,12 +490,11 @@ var __stage3BossParams = [ ] ;
           { 'bullet': B.aimFive,          'type': T.blueOrb,    'shotCount': [ 40, 120 ], 'baseCount': 160 }
         ],
         'v': [
-          { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
-          { 'count': 60,  'v': { 'target': { 'x': { 'min': 120, 'max': 200 }, 'y': { 'min': 90, 'max': 140 }, 'count': 60 } } },
-          { 'count': 120, 'v': { 'r': 0, 'theta': 90 } },
-          { 'count': 160, 'v': { 'target': { 'x': { 'min': 280, 'max': 360 }, 'y': { 'min': 90, 'max': 140 }, 'count': 60 } } },
-          { 'count': 220, 'v': { 'r': 0, 'theta': 90 } },
-          { 'count': 260, 'v': 1 }
+          { 'count': 0,    'v': { 'r': 0, 'theta': 90 } },
+          { 'count': 480,  'v': { 'target': { 'x': { 'min': 140, 'max': 200 }, 'y': { 'min': 100, 'max': 130 }, 'count': 60 } } },
+          { 'count': 540,  'v': { 'r': 0, 'theta': 90 } },
+          { 'count': 1020, 'v': { 'target': { 'x': { 'min': 280, 'max': 340 }, 'y': { 'min': 100, 'max': 130 }, 'count': 60 } } },
+          { 'count': 1080, 'v': 0 }
         ]
       },
       {
@@ -509,9 +508,9 @@ var __stage3BossParams = [ ] ;
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
-          { 'count': 240, 'v': { 'target': { 'x': { 'min': 210, 'max': 270 }, 'y': { 'min': 80, 'max': 100 }, 'count': 90 } } },
-          { 'count': 330, 'v': { 'r': 0, 'theta': 90 } },
-          { 'count': 480, 'v': 1 }
+          { 'count': 100, 'v': { 'target': { 'x': { 'min': 140, 'max': 340 }, 'y': { 'min': 70, 'max': 110 }, 'count': 80 } } },
+          { 'count': 180, 'v': { 'r': 0, 'theta': 90 } },
+          { 'count': 260, 'v': 1 }
         ]
       }
     ]
