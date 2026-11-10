@@ -408,6 +408,10 @@ StageState.prototype.runStep = function( ) {
     if(this.game.isMultiPlay()) {
       this._deployKeyFlag(this.keyFlags2.shift(), this.fighter2);
     }
+    // holding ctrl presses z through the talk every few steps; the presses are recorded like real ones
+    if(this.ctrlHeld && this.state == this._STATE_TALK && ! this.game.isMultiPlay() &&
+       this.replayCount % 3 == 0)
+      this.states[this._STATE_TALK].handleKeyDown({ keyCode: 90 });
   }
   this.replayCount++;
   this.syncCount++;
@@ -510,6 +514,7 @@ StageState.prototype.runStep = function( ) {
 
 
 StageState.prototype.releaseAllKeys = function( ) {
+  this.ctrlHeld = false;
   this.keyFlag = 0;
   this.keyTapped = 0;
 } ;
@@ -903,6 +908,10 @@ StageState.prototype._getFaceImage = function( ) {
 
 
 StageState.prototype.handleKeyDown = function( e ) {
+  if( e.keyCode == 17 )
+    this.ctrlHeld = true ;
+  else if( e.ctrlKey !== undefined )
+    this.ctrlHeld = !! e.ctrlKey ;
   if( this._handlePauseKey( e ) )
     return ;
 
@@ -919,6 +928,10 @@ StageState.prototype.handleKeyDown = function( e ) {
 
 
 StageState.prototype.handleKeyUp = function( e ) {
+  if( e.keyCode == 17 )
+    this.ctrlHeld = false ;
+  else if( e.ctrlKey !== undefined )
+    this.ctrlHeld = !! e.ctrlKey ;
   if( this.isFlagSet( this._FLAG_AUTO_PLAY ) )
     return ;
 //  this.states[ this.state ].handleKeyUp( e ) ;
