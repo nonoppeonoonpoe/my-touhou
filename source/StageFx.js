@@ -25,6 +25,8 @@ function StageFx( stage ) {
   this.circleY = 0 ;
   this.circleSpell = 0 ;
   this.focusAlpha = 0 ;
+  this.spellBgKey = null ;
+  this.spellBgAlpha = 0 ;
 }
 
 StageFx.prototype._MAX_PARTS = 400 ;
@@ -42,6 +44,8 @@ StageFx.prototype.reset = function( ) {
   this.barLag = 0 ;
   this.circleAlpha = 0 ;
   this.focusAlpha = 0 ;
+  this.spellBgKey = null ;
+  this.spellBgAlpha = 0 ;
 } ;
 
 
@@ -302,6 +306,29 @@ StageFx.prototype._updateBoss = function( ) {
     this.circleAlpha = 0 ;
   this.circleSpell += ( ( stage.spellCard ? 1 : 0 ) - this.circleSpell ) * 0.06 ;
   this.circleSpin += 0.02 + 0.02 * this.circleSpell ;
+  this._updateSpellBg( boss ) ;
+} ;
+
+
+// the boss's own picture fades in behind the field while her spell card runs
+StageFx.prototype._updateSpellBg = function( boss ) {
+  var spellTarget = 0 ;
+  if( boss && this.stage.spellCard && ! boss.isVanishingOrEscaping( ) ) {
+    var character = Game._CHARACTERS[ boss.character ] ;
+    if( character && character.spellBg ) {
+      if( this.spellBgKey !== character.spellBg && this.spellBgAlpha > 0 )
+        spellTarget = 0 ;
+      else {
+        this.spellBgKey = character.spellBg ;
+        spellTarget = 1 ;
+      }
+    }
+  }
+  this.spellBgAlpha += ( spellTarget - this.spellBgAlpha ) * 0.04 ;
+  if( spellTarget == 0 && this.spellBgAlpha < 0.02 )
+    this.spellBgAlpha = 0 ;
+  if( spellTarget == 1 && this.spellBgAlpha > 0.98 )
+    this.spellBgAlpha = 1 ;
 } ;
 
 

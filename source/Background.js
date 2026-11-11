@@ -43,6 +43,17 @@ BackgroundManager.prototype.initDrawer = function(layer, image) {
 
   this.effectTextures.length = 0;
   this._initForwardBlackEffect(layer);
+
+  this.spellTextures = {};
+  for(var name in Game._CHARACTERS) {
+    var spellBg = Game._CHARACTERS[name].spellBg;
+    if(spellBg && ! this.spellTextures[spellBg]) {
+      var spellTexture = layer.generateTexture(this.gameState.getImage(spellBg));
+      spellTexture.width = this.gameState.getImage(spellBg).width;
+      spellTexture.height = this.gameState.getImage(spellBg).height;
+      this.spellTextures[spellBg] = spellTexture;
+    }
+  }
 };
 
 
@@ -81,7 +92,7 @@ BackgroundManager.prototype.setDarkness = function(d) {
 
 
 // darken can be a brightness from 0.4 to 1, so the change can ease in
-BackgroundManager.prototype.draw = function(layer, darken) {
+BackgroundManager.prototype.draw = function(layer, darken, spellKey, spellAlpha) {
   var d = typeof darken == 'number' ? darken : (darken ? 0.4 : 1.0);
 
   this.setDarkness(d);
@@ -89,6 +100,22 @@ BackgroundManager.prototype.draw = function(layer, darken) {
 
   if(d >= 0.99)
     this._drawEffect(layer);
+  if(spellAlpha > 0 && this.spellTextures && this.spellTextures[spellKey])
+    this._drawSpellBg(layer, this.spellTextures[spellKey], spellAlpha);
+};
+
+
+// the spell card picture covers the field and slowly breathes in and out
+BackgroundManager.prototype._drawSpellBg = function(layer, texture, alpha) {
+  var fieldWidth = this.gameState.getWidth();
+  var fieldHeight = this.gameState.getHeight();
+  var breathe = 1.08 + Math.sin(this.get(this.activeIndex).count / 90) * 0.04;
+  var side = Math.max(fieldWidth, fieldHeight) * breathe;
+  layer.viewport();
+  layer.ortho(0.1, 10.0);
+  mat4.identity(layer.mvMatrix);
+  layer.drawOneTexture(texture, fieldWidth / 2, fieldHeight / 2, -1.0,
+                       side, side, 0.85, alpha * 0.85);
 };
 
 
