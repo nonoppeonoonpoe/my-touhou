@@ -66,13 +66,20 @@ FighterManager.prototype.getOther = function(isMaster) {
 };
 
 
+// both girls are made once. single play only puts the first one in play
 FighterManager.prototype._init = function() {
-  this.add(this._createFighter());
-  this.get(0).beDefaultPosition();
+  this.pool = [];
+  for(var i = 0; i < this._MAX_NUM; i++)
+    this.pool[i] = this._createFighter();
+  this.setPlayers(1);
+};
 
-  if(this.gameState.isMultiPlay()) {
-    this.add(this._createFighter());
-    this.get(1).beDefaultPosition();
+
+FighterManager.prototype.setPlayers = function(playerNum) {
+  this.elements.length = 0;
+  for(var i = 0; i < playerNum; i++) {
+    this.add(this.pool[i]);
+    this.pool[i].beDefaultPosition();
   }
 };
 
@@ -243,8 +250,12 @@ Fighter.prototype._generateView = function() {
 };
 
 
+// in co-op the two start side by side
 Fighter.prototype.beDefaultPosition = function( ) {
-  this.setX( parseInt( this.maxX / 2 ) ) ;
+  var startX = parseInt( this.maxX / 2 ) ;
+  if( this.gameState.isMultiPlay( ) )
+    startX += ( this.id == 0 ? -1 : 1 ) * this.gameState._COOP_SPREAD ;
+  this.setX( startX ) ;
   this.setY( this.maxY - 100 ) ;
 } ;
 
