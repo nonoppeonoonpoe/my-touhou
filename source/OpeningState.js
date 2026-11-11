@@ -49,22 +49,12 @@ OpeningState.prototype.notifyLogoConclusion = function( ) {
 
 
 OpeningState.prototype.notifyTitleConclusion = function() {
-  if(! this.isMultiPlay() || this.isConnected()) {
-    this.game.notifyOpeningConclusion();
-  } else {
-    // TODO: temporal
-    window.alert('connect to begin the game.');
-  }
+  this.game.notifyOpeningConclusion();
 };
 
 
 OpeningState.prototype.notifyReplaySelectBegin = function() {
-  if(this.isMultiPlay()) {
-    // TODO: temporal
-    window.alert('cannot choose replay for multi play.');
-  } else {
-    this.game.notifyReplaySelectBegin();
-  }
+  this.game.notifyReplaySelectBegin();
 };
 
 
@@ -200,10 +190,13 @@ TitleState = function( opening ) {
   this.optionIndex = 0 ;
   this.showPractice = false ;
   this.practiceIndex = 0 ;
+  this.showCoop = false ;
+  this.coopIndex = 0 ;
 }
 __inherit( TitleState, OpeningAbstractState ) ;
 
 TitleState._MENU = [ 'Start', 'Practice', 'Replay', 'Options', 'Controls' ] ;
+TitleState._COOP_MENU = [ 'Start', 'Co-op', 'Practice', 'Replay', 'Options', 'Controls' ] ;
 
 // key in game.options, label, lowest, highest
 TitleState._OPTIONS = [
@@ -233,6 +226,7 @@ TitleState._GLOBALALPHA_SPAN = 100 ;
 
 TitleState._MENU_TOP = 270 ;
 TitleState._MENU_GAP = 36 ;
+TitleState._COOP_MENU_GAP = 31 ;
 TitleState._PANEL_SPAN = 14 ;
 
 TitleState._STATE_DISPLAYING = 0x0 ;
@@ -247,10 +241,11 @@ TitleState.prototype.init = function( ) {
   this.optionIndex = 0 ;
   this.showPractice = false ;
   this.practiceIndex = 0 ;
+  this._closeCoop( ) ;
   this.state = TitleState._STATE_DISPLAYING ;
   this.barY = TitleState._MENU_TOP ;
   this.itemShifts = [ ] ;
-  for( var i = 0; i < TitleState._MENU.length; i++ )
+  for( var i = 0; i < TitleState._COOP_MENU.length; i++ )
     this.itemShifts[ i ] = 0 ;
   this.sparkles = [ ] ;
   this.panelCount = 0 ;
@@ -273,14 +268,25 @@ TitleState.prototype.runStep = function( ) {
 
 // the highlight bar and the picked item glide instead of jumping
 TitleState.prototype._moveMenuBar = function( ) {
-  var targetY = TitleState._MENU_TOP + this.index * TitleState._MENU_GAP ;
+  var targetY = TitleState._MENU_TOP + this.index * this._getMenuGap( ) ;
   this.barY += ( targetY - this.barY ) * 0.25 ;
-  for( var i = 0; i < TitleState._MENU.length; i++ ) {
+  for( var i = 0; i < this._getMenu( ).length; i++ ) {
     var targetShift = i == this.index ? 12 : 0 ;
     this.itemShifts[ i ] += ( targetShift - this.itemShifts[ i ] ) * 0.25 ;
   }
   var panelTargetY = this._getPanelRowY( ) ;
   this.panelRowY += ( panelTargetY - this.panelRowY ) * 0.3 ;
+} ;
+
+
+// co-op is only on the menu where the page has a way to reach a partner
+TitleState.prototype._getMenu = function( ) {
+  return this.opening.game.getCoopLink( ) ? TitleState._COOP_MENU : TitleState._MENU ;
+} ;
+
+
+TitleState.prototype._getMenuGap = function( ) {
+  return this.opening.game.getCoopLink( ) ? TitleState._COOP_MENU_GAP : TitleState._MENU_GAP ;
 } ;
 
 
@@ -313,6 +319,7 @@ TitleState.prototype.updateDisplay = function( surface ) {
   this._displayControls( surface ) ;
   this._displayOptions( surface ) ;
   this._displayPractice( surface ) ;
+  this._displayCoop( surface ) ;
 } ;
 
 
@@ -342,6 +349,10 @@ TitleState.prototype._showPanel = function( ) {
 TitleState.prototype._getPanelRowY = function( ) {
   if( this.showOptions )
     return 170 + this.optionIndex * 32 ;
+  if( this.showCoop ) {
+    var firstPlayer = Math.max( 0, this.coopIndex - 6 ) ;
+    return 170 + ( this.coopIndex - firstPlayer ) * 32 ;
+  }
   if( this.showPractice ) {
     var listSize = this._getPracticeList( ).length ;
     var firstRow = Math.max( 0, Math.min( this.practiceIndex - 4, listSize - 9 ) ) ;
@@ -447,6 +458,134 @@ TitleState.prototype._handlePracticeKey = function( e ) {
       this.showPractice = false ;
       this.opening.game.pendingPractice = practiceList[ this.practiceIndex ] ;
       this.opening.notifyTitleConclusion( ) ;
+      break ;
+  }
+} ;
+
+
+TitleState.prototype._openCoop = function( ) {
+  this.showCoop = true ;
+  this.coopIndex = 0 ;
+  this._showPanel( ) ;
+  this.opening.game.getCoopLink( ).openLobby( ) ;
+} ;
+
+
+TitleState.prototype._closeCoop = function( ) {
+  if( this.showCoop && this.opening.game.getCoopLink( ) )
+    this.opening.game.getCoopLink( ).closeLobby( ) ;
+  this.showCoop = false ;
+} ;
+
+
+TitleState._COOP_STATES = {
+  'invited': 'invited, waiting for them',
+  'asked': 'invited you, Z to join',
+  'busy': 'playing with someone'
+} ;
+
+// the co-op lobby: who is on the server, who invited who
+TitleState.prototype._displayCoop = function( surface ) {
+  if( ! this.showCoop )
+    return ;
+
+  var width = this.opening.getWidth( ) ;
+  var height = this.opening.getHeight( ) ;
+  var coopLink = this.opening.game.getCoopLink( ) ;
+  var players = coopLink.getPlayers( ) ;
+  surface.save( ) ;
+  this._openPanel( surface ) ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.textBaseline = 'middle' ;
+
+  surface.font = "28px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.fillText( 'Co-op', width / 2, 90 ) ;
+  surface.fillRect( width / 2 - 160, 115, 320, 1 ) ;
+
+  surface.font = "18px 'Comic Sans MS'" ;
+  var helpText = 'Z invites or joins, X goes back' ;
+  if( coopLink.kind == 'local' ) {
+    surface.fillText( 'Looking for another tab of this page' + this._getDots( ), width / 2, 190 ) ;
+    surface.globalAlpha = 0.6 * this.panelAlpha ;
+    surface.fillText( 'Open this page in a second window and pick Co-op there too.', width / 2, 240 ) ;
+    surface.fillText( 'Keep both windows visible, a hidden tab stops running.', width / 2, 270 ) ;
+    helpText = 'X goes back' ;
+  } else if( players.length == 0 ) {
+    surface.globalAlpha = 0.6 * this.panelAlpha ;
+    surface.fillText( 'Nobody else is on the server right now.', width / 2, 190 ) ;
+    helpText = 'X goes back' ;
+  } else {
+    this._drawPanelBar( surface, 560, 30 ) ;
+    var shownPlayers = 7 ;
+    var firstPlayer = Math.max( 0, this.coopIndex - ( shownPlayers - 1 ) ) ;
+    for( var i = firstPlayer; i < players.length && i < firstPlayer + shownPlayers; i++ ) {
+      var lineY = 170 + ( i - firstPlayer ) * 32 ;
+      surface.globalAlpha = ( ( i == this.coopIndex ) ? 1.0 : 0.4 ) * this.panelAlpha ;
+      surface.textAlign = 'right' ;
+      surface.fillText( this._fitText( surface, String( players[ i ].name ), 250 ), width / 2 - 10, lineY ) ;
+      surface.textAlign = 'left' ;
+      var stateText = TitleState._COOP_STATES[ players[ i ].state ] || 'Z to invite' ;
+      surface.fillText( stateText, width / 2 + 20, lineY ) ;
+    }
+    surface.textAlign = 'center' ;
+  }
+
+  surface.font = "16px 'Comic Sans MS'" ;
+  surface.globalAlpha = 0.6 * this.panelAlpha ;
+  surface.fillText( helpText, width / 2, height - 45 ) ;
+  surface.restore( ) ;
+} ;
+
+
+TitleState.prototype._getDots = function( ) {
+  return '...'.slice( 0, 1 + Math.floor( this.count / 30 ) % 3 ) ;
+} ;
+
+
+// long names get cut with dots so they stay on their side
+TitleState.prototype._fitText = function( surface, text, maxWidth ) {
+  if( surface.measureText( text ).width <= maxWidth )
+    return text ;
+  while( text.length > 1 && surface.measureText( text + '...' ).width > maxWidth )
+    text = text.slice( 0, -1 ) ;
+  return text + '...' ;
+} ;
+
+
+TitleState.prototype._handleCoopKey = function( e ) {
+  var coopLink = this.opening.game.getCoopLink( ) ;
+  var players = coopLink.getPlayers( ) ;
+  if( this.coopIndex >= players.length )
+    this.coopIndex = Math.max( 0, players.length - 1 ) ;
+  switch( e.keyCode ) {
+    case 38: // up
+      if( players.length > 0 ) {
+        this.coopIndex = ( this.coopIndex + players.length - 1 ) % players.length ;
+        this.soundEffect( Game._SE_SELECT ) ;
+      }
+      break ;
+    case 40: // down
+      if( players.length > 0 ) {
+        this.coopIndex = ( this.coopIndex + 1 ) % players.length ;
+        this.soundEffect( Game._SE_SELECT ) ;
+      }
+      break ;
+    case 88: // x
+      this.soundEffect( Game._SE_CANCEL ) ;
+      this._closeCoop( ) ;
+      break ;
+    case 90: // z
+      if( coopLink.kind == 'local' || players.length == 0 )
+        break ;
+      var pickedPlayer = players[ this.coopIndex ] ;
+      if( pickedPlayer.state == 'busy' || pickedPlayer.state == 'invited' )
+        break ;
+      this.soundEffect( Game._SE_OK ) ;
+      if( pickedPlayer.state == 'asked' )
+        coopLink.accept( pickedPlayer.id ) ;
+      else
+        coopLink.invite( pickedPlayer.id ) ;
       break ;
   }
 } ;
@@ -663,14 +802,15 @@ TitleState.prototype._displayPressKey = function( surface ) {
   surface.font = "24px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
   surface.fillStyle = 'rgb( 0, 0, 0 )' ;
-  for( var i = 0; i < TitleState._MENU.length; i++ ) {
+  var menuItems = this._getMenu( ) ;
+  for( var i = 0; i < menuItems.length; i++ ) {
     var slideTime = __animTime( this.count, menuStart + i * 8, 22 ) ;
     if( slideTime <= 0 )
       continue ;
     var slideX = -70 * ( 1 - __easeOut( slideTime ) ) ;
     surface.globalAlpha = ( this.index == i ? 1.0 : 0.25 ) * __easeOut( slideTime ) ;
-    surface.fillText( TitleState._MENU[ i ], 120 + slideX + this.itemShifts[ i ],
-                      TitleState._MENU_TOP + i * TitleState._MENU_GAP ) ;
+    surface.fillText( menuItems[ i ], 120 + slideX + this.itemShifts[ i ],
+                      TitleState._MENU_TOP + i * this._getMenuGap( ) ) ;
   }
 
   surface.restore( ) ;
@@ -688,6 +828,11 @@ TitleState.prototype.handleKeyDown = function( e ) {
     return ;
   }
 
+  if( this.showCoop ) {
+    this._handleCoopKey( e ) ;
+    return ;
+  }
+
   if( this.showControls ) {
     if( e.keyCode == 90 || e.keyCode == 88 ) { // z, x
       this.soundEffect( Game._SE_CANCEL ) ;
@@ -700,16 +845,19 @@ TitleState.prototype.handleKeyDown = function( e ) {
     case 90: // z
       this.soundEffect( Game._SE_OK ) ;
       if( this.state == TitleState._STATE_DISPLAYED ) {
-        if( this.index == 0 ) {
+        var pickedItem = this._getMenu( )[ this.index ] ;
+        if( pickedItem == 'Start' ) {
           this.opening.game.pendingPractice = null ;
           this.opening.notifyTitleConclusion( ) ;
-        } else if( this.index == 1 ) {
+        } else if( pickedItem == 'Co-op' ) {
+          this._openCoop( ) ;
+        } else if( pickedItem == 'Practice' ) {
           this.showPractice = true ;
           this.practiceIndex = 0 ;
           this._showPanel( ) ;
-        } else if( this.index == 2 )
+        } else if( pickedItem == 'Replay' )
           this.opening.notifyReplaySelectBegin( ) ;
-        else if( this.index == 3 ) {
+        else if( pickedItem == 'Options' ) {
           this.showOptions = true ;
           this.optionIndex = 0 ;
           this._showPanel( ) ;
@@ -725,13 +873,13 @@ TitleState.prototype.handleKeyDown = function( e ) {
     case 38: // up
       if( this.state == TitleState._STATE_DISPLAYED ) {
         this.soundEffect( Game._SE_SELECT ) ;
-        this.index = ( this.index + TitleState._MENU.length - 1 ) % TitleState._MENU.length ;
+        this.index = ( this.index + this._getMenu( ).length - 1 ) % this._getMenu( ).length ;
       }
       break ;
     case 40: // down
       if( this.state == TitleState._STATE_DISPLAYED ) {
         this.soundEffect( Game._SE_SELECT ) ;
-        this.index = ( this.index + 1 ) % TitleState._MENU.length ;
+        this.index = ( this.index + 1 ) % this._getMenu( ).length ;
       }
       break ;
     case 32: // space

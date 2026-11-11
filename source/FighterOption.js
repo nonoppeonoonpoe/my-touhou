@@ -38,6 +38,16 @@ FighterOptionManager.prototype._init = function() {
     this.create(fighter, this._PARAMS[0]);
     this.create(fighter, this._PARAMS[1]);
   }
+  this.pool = this.elements.slice();
+  this.setPlayers(1);
+};
+
+
+// two options for each girl in play
+FighterOptionManager.prototype.setPlayers = function(playerNum) {
+  this.elements.length = 0;
+  for(var i = 0; i < playerNum * 2; i++)
+    this.addElement(this.pool[i]);
 };
 
 

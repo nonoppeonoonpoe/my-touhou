@@ -92,6 +92,13 @@ StageState.prototype._BUTTON_Z     = 0x10;
 StageState.prototype._BUTTON_X     = 0x20;
 StageState.prototype._BUTTON_SHIFT = 0x40;
 StageState.prototype._BUTTON_SPACE = 0x80;
+StageState.prototype._BUTTON_CTRL  = 0x100;
+
+// co-op: how often the two games compare notes, in steps
+StageState.prototype._CHECK_SPAN = 60;
+StageState.prototype._COOP_PLAYERS = 4;
+StageState.prototype._COOP_SPREAD = 48;
+StageState.prototype._LEAVE_PRESS_MS = 2000;
 
 StageState.prototype._FLAG_FIGHTER_DEAD    =    0x1 ;
 StageState.prototype._FLAG_BOSS_EXIST      =    0x2 ;
@@ -172,10 +179,19 @@ StageState.prototype.init = function( params ) {
   this.syncCount = 0;
   this.waitingForOther = false;
   this.viewFromFighter = false;
+  this.checkSums = { };
+  this.partnerSums = { };
+  this.leavePressTime = 0;
+  if(this.game.isMultiPlay()) {
+    this.cheated = false;
+    for(var cheatName in this.debugFlags)
+      this.debugFlags[cheatName] = false;
+  }
 
   if( ! this.initialized ) {
     this._initBackground();
     this._initFighter( ) ;
+    this._pickFighters( ) ;
     this._initEnemies( ) ;
     this._initBullets( ) ;
     this._initBomb( ) ;
@@ -184,6 +200,7 @@ StageState.prototype.init = function( params ) {
     this._initSpellCards( ) ;
     this.initialized = true ;
   } else {
+    this._pickFighters( ) ;
     this.reset( ) ;
   }
   if( params.autoplay ) {
@@ -247,19 +264,39 @@ StageState.prototype._initBackground = function() {
  */
 StageState.prototype._initFighter = function() {
   this.fighterManager = new FighterManager(this);
+  this.fighterManager.initDrawer(this.game.bgLayer, null);
+  this.fighterOptionManager = new FighterOptionManager(
+                                    this, this.fighterManager.pool);
+  this.fighterOptionManager.initDrawer(this.game.bgLayer, null);
+};
 
- // TODO: temporal
+
+// one girl in single play, two in co-op. player 1 is the same girl in both games
+StageState.prototype._pickFighters = function() {
+  var playerNum = this.game.isMultiPlay() ? 2 : 1;
+  this.fighterManager.setPlayers(playerNum);
+  this.fighterOptionManager.setPlayers(playerNum);
   if(this.game.isMultiPlay()) {
     this.fighter = this.fighterManager.getMe(this.game.isMaster());
     this.fighter2 = this.fighterManager.getOther(this.game.isMaster());
   } else {
     this.fighter = this.fighterManager.getFighter();
+    this.fighter2 = null;
   }
+};
 
-  this.fighterManager.initDrawer(this.game.bgLayer, null);
-  this.fighterOptionManager = new FighterOptionManager(
-                                    this, this.fighterManager.elements);
-  this.fighterOptionManager.initDrawer(this.game.bgLayer, null);
+
+// whose lines a talk uses. in co-op both games have to pick the same girl
+StageState.prototype.getTalkFighter = function() {
+  return this.game.isMultiPlay() ? this.fighterManager.get(0) : this.fighter;
+};
+
+
+StageState.prototype._getTeamPower = function() {
+  var teamPower = 0;
+  for(var i = 0; i < this.fighterManager.elements.length; i++)
+    teamPower = Math.max(teamPower, this.fighterManager.elements[i].getPower());
+  return teamPower;
 };
 
 
@@ -302,6 +339,9 @@ StageState.prototype._initItems = function() {
 StageState.prototype.getStartPlayers = function( ) {
   if( this.replayStart )
     return this.replayStart.lives ;
+  // co-op shares one stock, and both games have to start with the same one
+  if( this.game.isMultiPlay( ) )
+    return this._COOP_PLAYERS ;
   var options = this.game.options ;
   return options && typeof options.lives == 'number' ? options.lives : this._START_PLAYERS ;
 } ;
@@ -310,6 +350,8 @@ StageState.prototype.getStartPlayers = function( ) {
 StageState.prototype.getStartBombs = function( ) {
   if( this.replayStart )
     return this.replayStart.bombs ;
+  if( this.game.isMultiPlay( ) )
+    return this._START_BOMBS ;
   var options = this.game.options ;
   return options && typeof options.bombs == 'number' ? options.bombs : this._START_BOMBS ;
 } ;
@@ -345,6 +387,8 @@ StageState.prototype._loadHiScore = function( ) {
 // replays don't count for the hiscore
 StageState.prototype._saveHiScore = function( ) {
   if( this.isFlagSet( this._FLAG_AUTO_PLAY ) || this.cheated || this.practice || this.score <= this.hiScore )
+    return ;
+  if( this.game.isMultiPlay( ) )
     return ;
   this.hiScore = this.score ;
   try {
@@ -384,11 +428,6 @@ StageState.prototype._initSpellCards = function( ) {
 } ;
 
 
-StageState.prototype._start = function() {
-  this.peer.send({id: this._PEER_ID_START, seed: this.seed});
-};
-
-
 StageState.prototype.runStep = function( ) {
   if( this.paused )
     return ;
@@ -401,17 +440,33 @@ StageState.prototype.runStep = function( ) {
     // a key tapped and let go between two steps still counts for one step
     var stepFlag = this.keyFlag | this.keyTapped;
     this.keyTapped = 0;
+    if(this.ctrlHeld && this.game.isMultiPlay())
+      stepFlag |= this._BUTTON_CTRL;
     this.keyFlags.push(stepFlag);
     this.keyFlagHistories.push(stepFlag);
     this.keyFlagHistories.shiftUntilLengthIs(this._BUTTON_HISTORY);
-    this._deployKeyFlag(this.keyFlags.shift(), this.fighter);
+    var myFlag = this.keyFlags.shift();
+    var skipTalk = this.ctrlHeld;
     if(this.game.isMultiPlay()) {
-      this._deployKeyFlag(this.keyFlags2.shift(), this.fighter2);
+      /*
+       * both games have to handle the two players in the same order,
+       * and ctrl goes through the shared keys so either player can skip
+       */
+      var partnerFlag = this.keyFlags2.shift();
+      skipTalk = ((myFlag | partnerFlag) & this._BUTTON_CTRL) ? true : false;
+      if(this.game.isMaster()) {
+        this._deployKeyFlag(myFlag, this.fighter);
+        this._deployKeyFlag(partnerFlag, this.fighter2);
+      } else {
+        this._deployKeyFlag(partnerFlag, this.fighter2);
+        this._deployKeyFlag(myFlag, this.fighter);
+      }
+    } else {
+      this._deployKeyFlag(myFlag, this.fighter);
     }
     // holding ctrl presses z through the talk every few steps; the presses are recorded like real ones
-    if(this.ctrlHeld && this.state == this._STATE_TALK && ! this.game.isMultiPlay() &&
-       this.replayCount % 3 == 0)
-      this.states[this._STATE_TALK].handleKeyDown({ keyCode: 90 });
+    if(skipTalk && this.state == this._STATE_TALK && this.replayCount % 3 == 0)
+      this.states[this._STATE_TALK].handleKeyDown({ keyCode: 90 }, this.getTalkFighter());
   }
   this.replayCount++;
   this.syncCount++;
@@ -520,9 +575,8 @@ StageState.prototype.releaseAllKeys = function( ) {
 } ;
 
 
-// TODO: temporal
 StageState.prototype.doRunNextStep = function() {
-  return this.game.isMultiPlay() ? false : true;
+  return true;
 };
 
 
@@ -629,6 +683,7 @@ StageState.prototype.updateDisplay = function( surface ) {
   surface.translate( this.fx.shakeX, this.fx.shakeY ) ;
   this.fx.draw( surface ) ;
   this._displayHitbox( surface ) ;
+  this._displayPartnerName( surface ) ;
   surface.restore( ) ;
   this._displayBombName( surface ) ;
   this._displayBossVital( surface ) ;
@@ -1421,14 +1476,7 @@ StageState.prototype.notifyBossVanishEnd = function( boss ) {
   if( boss.vanishedTalk ) {
     this.state = this._STATE_TALK ;
     this.fighterManager.beNeutral( ) ;
-    // TODO: temporal. consider if desync can occur.
-    for(var i = 0; i < this.lag; i++) {
-      this.keyFlags.set(i, this.states[this.state].resetButton(this.keyFlags.get(i)));
-    }
-    for(var i = 0; i < this._BUTTON_HISTORY; i++) {
-      this.keyFlags2.set(i, this.states[this.state].resetButton(this.keyFlags2.get(i)));
-      this.keyFlagHistories.set(i, this.states[this.state].resetButton(this.keyFlagHistories.get(i)));
-    }
+    this._resetQueuedButtons();
   }
 //  this.state = this._STATE_CLEAR ;
 } ;
@@ -1440,14 +1488,7 @@ StageState.prototype.notifyBossVanishEnd = function( boss ) {
 StageState.prototype.notifyBeginTalk = function() {
   this.state = this._STATE_TALK;
   this.fighterManager.beNeutral();
-  // TODO: temporal. consider if desync can occur.
-  for(var i = 0; i < this.lag; i++) {
-    this.keyFlags.set(i, this.states[this.state].resetButton(this.keyFlags.get(i)));
-  }
-  for(var i = 0; i < this._BUTTON_HISTORY; i++) {
-    this.keyFlags2.set(i, this.states[this.state].resetButton(this.keyFlags2.get(i)));
-    this.keyFlagHistories.set(i, this.states[this.state].resetButton(this.keyFlagHistories.get(i)));
-  }
+  this._resetQueuedButtons();
 };
 
 
@@ -1524,14 +1565,7 @@ StageState.prototype.notifyFighterDead = function( fighter, element ) {
     this.state = this._STATE_GAME_OVER ;
     this.states[ this.state ].init( ) ;
     fighter.beNeutral( ) ;
-    // TODO: temporal. consider if desync can occur.
-    for(var i = 0; i < this.lag; i++) {
-      this.keyFlags.set(i, this.states[this.state].resetButton(this.keyFlags.get(i)));
-    }
-    for(var i = 0; i < this._BUTTON_HISTORY; i++) {
-      this.keyFlags2.set(i, this.states[this.state].resetButton(this.keyFlags2.get(i)));
-      this.keyFlagHistories.set(i, this.states[this.state].resetButton(this.keyFlagHistories.get(i)));
-    }
+    this._resetQueuedButtons();
     return ;
   }
 
@@ -1688,14 +1722,7 @@ StageState.prototype.notifyBossBeginTalk = function( boss ) {
   if( boss.appearedTalk ) {
     this.state = this._STATE_TALK ;
     this.fighterManager.beNeutral( ) ;
-    // TODO: temporal. consider if desync can occur.
-    for(var i = 0; i < this.lag; i++) {
-      this.keyFlags.set(i, this.states[this.state].resetButton(this.keyFlags.get(i)));
-    }
-    for(var i = 0; i < this._BUTTON_HISTORY; i++) {
-      this.keyFlags2.set(i, this.states[this.state].resetButton(this.keyFlags2.get(i)));
-      this.keyFlagHistories.set(i, this.states[this.state].resetButton(this.keyFlagHistories.get(i)));
-    }
+    this._resetQueuedButtons();
   } else {
     this.notifyBossBecameActive( boss ) ;
   }
@@ -1788,7 +1815,7 @@ StageState.prototype.notifyStageClear = function( ) {
   this.messages = [ ] ;
   this.clearInfo = {
     stage: this.stageIndex + 1,
-    power: this.fighter.getPower( ),
+    power: this._getTeamPower( ),
     graze: this.graze,
     points: this.pointItems,
     last: this.stageIndex >= this.params.length - 1,
@@ -1814,7 +1841,7 @@ StageState.prototype.getClearLift = function( ) {
 
 
 StageState.prototype._getClearBonus = function( ) {
-  var clearBonus = ( ( this.stageIndex + 1 ) * 1000 + this.fighter.getPower( ) * 100 + this.graze * 10 ) * this.pointItems ;
+  var clearBonus = ( ( this.stageIndex + 1 ) * 1000 + this._getTeamPower( ) * 100 + this.graze * 10 ) * this.pointItems ;
   if( this.stageIndex >= this.params.length - 1 )
     clearBonus += this.players * 3000000 + this.bombs * 1000000 ;
   return Math.floor( clearBonus / 10 ) * 10 ;
@@ -1864,6 +1891,22 @@ StageState.prototype._displayMessages = function( surface ) {
     surface.fillText( message.text, 0, 0 ) ;
     surface.restore( ) ;
   }
+  surface.restore( ) ;
+} ;
+
+
+// in co-op the partner's name floats over their girl, to tell the two apart
+StageState.prototype._displayPartnerName = function( surface ) {
+  if( ! this.game.isMultiPlay( ) || ! this.fighter2 || this.viewFromFighter || this.state == this._STATE_CLEAR )
+    return ;
+  if( this.fighter2.isDead( ) )
+    return ;
+  surface.save( ) ;
+  surface.font = 'italic 11px Arial' ;
+  surface.textAlign = 'center' ;
+  surface.globalAlpha = 0.7 ;
+  surface.fillStyle = 'rgb( 160, 220, 255 )' ;
+  surface.fillText( this.game.getPartnerName( ), this.fighter2.getX( ), this.fighter2.getDrawY( ) - 30 ) ;
   surface.restore( ) ;
 } ;
 
@@ -1987,8 +2030,19 @@ StageState.prototype._displaySpellBanner = function( surface, boss ) {
 StageState.prototype._handlePauseKey = function( e ) {
   var isPauseKey = e.keyCode == 27 || e.keyCode == 80 ;
   if( ! this.paused ) {
-    if( ! isPauseKey || e.repeat || this.game.isMultiPlay( ) )
+    if( ! isPauseKey || e.repeat )
       return false ;
+    // co-op can't pause. pressing it twice leaves the game
+    if( this.game.isMultiPlay( ) ) {
+      var pressTime = Date.now( ) ;
+      if( pressTime - this.leavePressTime < this._LEAVE_PRESS_MS ) {
+        this.game.leaveCoop( 'You left the co-op game.' ) ;
+      } else {
+        this.leavePressTime = pressTime ;
+        this.game.showNotice( 'Press Esc or P again to leave the co-op game.' ) ;
+      }
+      return true ;
+    }
     if( this.state != this._STATE_SHOOTING && this.state != this._STATE_TALK )
       return false ;
     this.paused = true ;
@@ -2316,29 +2370,80 @@ StageState.prototype._deployKeyFlag = function(flag, fighter) {
 };
 
 
-StageState.prototype._SYNC_CONTAINER = {m: null, a: null};
+/*
+ * keys that are still waiting in the queue used to be cleared when a talk
+ * or the game over screen starts. co-op leaves them alone, the two games
+ * would not clear the same ones
+ */
+StageState.prototype._resetQueuedButtons = function() {
+  if(this.game.isMultiPlay())
+    return;
+  for(var i = 0; i < this.lag; i++) {
+    this.keyFlags.set(i, this.states[this.state].resetButton(this.keyFlags.get(i)));
+  }
+};
+
+
+// sends this step's keys to the partner, and now and then a number to compare the two games with
 StageState.prototype._sync = function() {
-  var c = this._SYNC_CONTAINER;
-  c.m = this.keyFlagHistories.min;
-  c.a = this.keyFlagHistories.getValues();
+  var c = {m: this.keyFlagHistories.min, a: this.keyFlagHistories.getValues()};
+  if(this.syncCount % this._CHECK_SPAN == 0) {
+    var checkSum = this._getCheckSum();
+    this.checkSums[this.syncCount] = checkSum;
+    c.c = this.syncCount;
+    c.h = checkSum;
+    this._compareCheckSum(this.syncCount);
+  }
   this.game.sync(c);
-  this._runNextStepIfPossible();
 };
 
 
 StageState.prototype.receiveFromPeer = function(data) {
+  if(typeof data.m != 'number' || ! data.a || data.a.length > this._BUTTON_HISTORY + 1)
+    return;
   this.keyFlags2.insertValues(data.m, data.a);
-  if(this.waitingForOther)
-    this._runNextStepIfPossible();
+  if(typeof data.c == 'number') {
+    this.partnerSums[data.c] = data.h;
+    this._compareCheckSum(data.c);
+  }
 };
 
 
-StageState.prototype._runNextStepIfPossible = function() {
-  if(this.keyFlags2.hasValueOfCount(this.syncCount)) {
-    this.waitingForOther = false;
-    this.game.runNextStep();
-  } else {
-    this.waitingForOther = true;
+// true when the partner's keys for the next step are here
+StageState.prototype.hasPartnerKeys = function() {
+  return this.keyFlags2.hasValueOfCount(this.syncCount);
+};
+
+
+StageState.prototype.isBehindPartner = function() {
+  return this.keyFlags2.max - this.syncCount >= this.lag + 1;
+};
+
+
+// a few things that have to be the same in both games after the same step
+StageState.prototype._getCheckSum = function() {
+  var checkSum = this.score % 1000003;
+  checkSum = (checkSum * 31 + this.players * 7 + this.bombs) % 1000003;
+  checkSum = (checkSum * 31 + this.count + this.stageIndex * 100000) % 1000003;
+  checkSum = (checkSum * 31 + this.enemyBulletManager.elements.length) % 1000003;
+  checkSum = (checkSum * 31 + (this.Randomizer._xors.w & 0xffff)) % 1000003;
+  for(var i = 0; i < this.fighterManager.elements.length; i++) {
+    var sumFighter = this.fighterManager.elements[i];
+    checkSum = (checkSum * 31 + Math.round(sumFighter.getX() * 16) + Math.round(sumFighter.getY() * 16) * 3) % 1000003;
+  }
+  return checkSum;
+};
+
+
+StageState.prototype._compareCheckSum = function(checkCount) {
+  if(this.checkSums[checkCount] === undefined || this.partnerSums[checkCount] === undefined)
+    return;
+  var sameSum = this.checkSums[checkCount] === this.partnerSums[checkCount];
+  delete this.checkSums[checkCount];
+  delete this.partnerSums[checkCount];
+  if(! sameSum) {
+    this.desyncCount = checkCount;
+    this.game.leaveCoop('The two games went out of sync, so the co-op game ended.');
   }
 };
 
@@ -2638,8 +2743,8 @@ TalkState.prototype.start = function( scene, afterTalk, boss ) {
 // the lines for the girl being played, from a named talk or the old stage by stage list
 TalkState.prototype._getLines = function( ) {
   if( this.scene )
-    return this.scene[ this.stage.fighter.characterIndex ] ;
-  return this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ] ;
+    return this.scene[ this.stage.getTalkFighter( ).characterIndex ] ;
+  return this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.getTalkFighter( ).characterIndex ] ;
 } ;
 
 
@@ -2689,12 +2794,12 @@ TalkState.prototype._isTyping = function( ) {
 } ;
 
 
-TalkState.prototype.handleKeyDown = function( e ) {
+TalkState.prototype.handleKeyDown = function( e, fighter ) {
   var p = [ ] ;
   switch( e.keyCode ) {
     case 32: // space
       p.push( 'sp' ) ;
-      this.stage.fighter.changeCharacter( ) ;
+      ( fighter || this.stage.fighter ).changeCharacter( ) ;
       break ;
     case 90: // z
       p.push( 'z' ) ;
@@ -2717,7 +2822,7 @@ TalkState.prototype.handleKeyDown = function( e ) {
         break ;
       }
       // TODO: temporal
-      if( this.index >= this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.fighter.characterIndex ].length ) {
+      if( this.index >= this.params[ this.stageIndex ][ this.sceneIndex ][ this.stage.getTalkFighter( ).characterIndex ].length ) {
         this.sceneIndex++ ;
         this.index = 0 ;
         if( this.sceneIndex >= this.params[ this.stageIndex ].length ) {
@@ -2886,12 +2991,12 @@ ClearState.prototype.runStep = function( ) {
 } ;
 
 
-ClearState.prototype.handleKeyDown = function( e ) {
+ClearState.prototype.handleKeyDown = function( e, fighter ) {
   var p = [ ] ;
   switch( e.keyCode ) {
     case 32: // space
       p.push( 'sp' ) ;
-      this.stage.fighter.changeCharacter( ) ;
+      ( fighter || this.stage.fighter ).changeCharacter( ) ;
       break ;
     case 90: // z
       p.push( 'z' ) ;

@@ -51,6 +51,28 @@ CharacterSelectState.prototype.updateDisplay = function( surface ) {
   this._displayMessage( surface ) ;
   this._displayCharacters( surface ) ;
   this._displayFlash( surface ) ;
+  this._displayCoop( surface ) ;
+} ;
+
+
+// who the co-op partner is, and that the game waits for their pick
+CharacterSelectState.prototype._displayCoop = function( surface ) {
+  if( ! this.game.isMultiPlay( ) )
+    return ;
+  surface.save( ) ;
+  surface.textAlign = 'center' ;
+  surface.font = '16px Arial' ;
+  var coopText = 'Co-op with ' + this.game.getPartnerName( ) + '.  Z picks, X leaves' ;
+  if( this.game.isWaitingOther( ) )
+    coopText = 'Waiting for ' + this.game.getPartnerName( ) + ' to pick...  X leaves' ;
+  surface.textBaseline = 'middle' ;
+  surface.globalAlpha = 0.7 ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( 0, this.getHeight( ) - 40, this.getWidth( ), 30 ) ;
+  surface.globalAlpha = 1 ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillText( coopText, this.getWidth( ) / 2, this.getHeight( ) - 25 ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -192,6 +214,17 @@ CharacterSelectState.prototype.handleKeyDown = function( e ) {
   if( this.count < CharacterSelectState._APPEAR_SPAN || this.confirmCount > 0 )
     return ;
 
+  // in co-op x leaves the partner, and a pick can't be changed
+  if( this.game.isMultiPlay( ) ) {
+    if( e.keyCode == 88 ) {
+      this._soundEffect( Game._SE_CANCEL ) ;
+      this.game.leaveCoop( 'You left the co-op game.' ) ;
+      return ;
+    }
+    if( this.game.isWaitingOther( ) )
+      return ;
+  }
+
   switch( e.keyCode ) {
     case 37: // left
       this.index++ ;
@@ -212,13 +245,11 @@ CharacterSelectState.prototype.handleKeyDown = function( e ) {
       this.game.notifyLoadingConclusion( this.index ) ; // TODO: temporal
       break ;
     case 90: // z
-      // online play has to answer right away to stay in sync
+      this._soundEffect( Game._SE_OK ) ;
       if( this.game.isMultiPlay( ) )
         this.game.notifyCharacterSelectConclusion( this.index ) ;
-      else {
-        this._soundEffect( Game._SE_OK ) ;
+      else
         this.confirmCount = 1 ;
-      }
       break ;
   } ;
 } ;

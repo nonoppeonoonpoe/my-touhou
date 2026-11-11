@@ -1,6 +1,6 @@
 function Game(mainCanvas, bgCanvas) {
+  // the old online counter's server is gone, so nothing connects to it anymore
   this.gs = new GameSocket(this);
-  this.gs.connect();
 
   // the canvases can be bigger than the game; everything is drawn at 640x480 and scaled up
   this.scale = Number(mainCanvas.getAttribute('width')) / Game._BASE_WIDTH;
@@ -61,30 +61,23 @@ function Game(mainCanvas, bgCanvas) {
   this.runFunc = function() { self._runStep(); };
 
   this.lag = null;
-  this.room = null;
-  this.peer = null;
+  this.coopLink = null;
+  this.coopRun = 0;
+  this.partnerName = '';
+  this.notice = null;
+  this.noticeTime = 0;
   this.master = false;
   this.multiPlay = false;
-  this.connected = false;
   this.waitingOther = false;
   this.receivedOther = false;
   this.otherParams = null;
   this.meParams = null;
-
-  this.onWsReady = null;
-  this.onConnected = null;
-  this.onSentParams = null;
-  this.onRan = null;
-  this.onRoomUpdate = null;
 }
 
 Game._BASE_WIDTH = 640;
 Game._BASE_HEIGHT = 480;
 
 Game.prototype.Randomizer = __randomizer;
-
-//Game.prototype._WS_URL = 'ws://localhost:5000';
-Game.prototype._WS_URL = 'wss://boiling-anchorage-5279.herokuapp.com/';
 
 Game.prototype._PEER_ID_START = 0;
 Game.prototype._PEER_ID_SYNC = 1;
@@ -517,10 +510,6 @@ Game.prototype.handleKeyDown = function( e ) {
     this.audioContext.resume( ) ;
   this._syncShift( e ) ;
 
-  // TODO: temporal
-  if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
-    return;
-
   this.states[ this.state ].handleKeyDown( e ) ;
   e.preventDefault( ) ;
 } ;
@@ -570,10 +559,6 @@ Game.prototype._syncShift = function( e ) {
 
 Game.prototype.handleKeyUp = function( e ) {
   this._syncShift( e ) ;
-  // TODO: temporal
-  if(this.isMultiPlay() && this.waitingOther && ! this.receivedOther)
-    return;
-
   this.states[ this.state ].handleKeyUp( e ) ;
   e.preventDefault( ) ;
 } ;
@@ -583,15 +568,14 @@ Game.prototype.handleKeyUp = function( e ) {
  * TODO: temporal
  */
 Game.prototype._runStep = function( ) {
-  // single play runs a fixed 60 steps per second, so high refresh rate
-  // monitors (120Hz, 144Hz...) don't speed the game up.
-  // online co-op is driven by sync messages and keeps one step per call.
-  if( this.isMultiPlay( ) ) {
-    this._runOneStep( ) ;
-    this._drawStep( ) ;
-  } else {
+  /*
+   * the game runs a fixed 60 steps per second, so high refresh rate
+   * monitors (120Hz, 144Hz...) don't speed it up.
+   * in co-op a step also waits until the partner's keys for it are here
+   */
+  {
     // debug speed: 0.5 is slow motion, 2 is fast forward
-    var gameSpeed = this.speed || 1 ;
+    var gameSpeed = this.isMultiPlay( ) ? 1 : ( this.speed || 1 ) ;
     var stepMs = 1000 / ( Game._FPS * gameSpeed ) ;
     var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
     if( this.lastStepTime === undefined || nowTime - this.lastStepTime > 250 )
@@ -602,26 +586,78 @@ Game.prototype._runStep = function( ) {
     var frameMs = this.lastFrameTime === undefined ? 0 : nowTime - this.lastFrameTime ;
     this.lastFrameTime = nowTime ;
     var stepsDone = 0 ;
+    var stalled = false ;
     if( gameSpeed == 1 && Math.abs( frameMs - stepMs ) < 2.5 ) {
-      this._runOneStep( ) ;
+      if( this._canRunStep( ) ) {
+        this._runOneStep( ) ;
+        stepsDone = 1 ;
+      } else {
+        stalled = true ;
+      }
       this.lastStepTime = nowTime ;
-      stepsDone = 1 ;
     }
     // a slow frame only catches up a little, so one late frame doesn't make the next one late too
     var maxSteps = gameSpeed > 1 ? 5 : 2 ;
-    while( nowTime - this.lastStepTime >= stepMs && stepsDone < maxSteps ) {
+    while( ! stalled && nowTime - this.lastStepTime >= stepMs && stepsDone < maxSteps ) {
+      if( ! this._canRunStep( ) ) {
+        stalled = true ;
+        break ;
+      }
       this._runOneStep( ) ;
       this.lastStepTime += stepMs ;
       stepsDone++ ;
     }
-    if( stepsDone >= maxSteps )
+    if( stalled || stepsDone >= maxSteps )
       this.lastStepTime = nowTime ;
-    if( stepsDone > 0 )
+    // a co-op game that fell behind its partner runs one more step to catch up
+    if( ! stalled && stepsDone > 0 && stepsDone < 3 && this._isBehindPartner( ) && this._canRunStep( ) ) {
+      this._runOneStep( ) ;
+      stepsDone++ ;
+    }
+    this._checkCoopStall( stalled, nowTime ) ;
+    if( stepsDone > 0 || stalled )
       this._drawStep( ) ;
   }
 
-  if(this.states[this.state].doRunNextStep())
-    this.runNextStep();
+  this.runNextStep();
+} ;
+
+
+Game._STALL_NOTICE_MS = 1000 ;
+Game._STALL_DROP_MS = 15000 ;
+
+Game.prototype._canRunStep = function( ) {
+  if( ! this.isMultiPlay( ) || this.state != Game._STATE_IN_STAGE )
+    return true ;
+  return this.states[ this.state ].hasPartnerKeys( ) ;
+} ;
+
+
+Game.prototype._isBehindPartner = function( ) {
+  if( ! this.isMultiPlay( ) || this.state != Game._STATE_IN_STAGE )
+    return false ;
+  return this.states[ this.state ].isBehindPartner( ) ;
+} ;
+
+
+// a partner that stops answering for a long time counts as gone
+Game.prototype._checkCoopStall = function( stalled, nowTime ) {
+  if( ! stalled ) {
+    this.stallStart = null ;
+    return ;
+  }
+  if( this.stallStart === null || this.stallStart === undefined )
+    this.stallStart = nowTime ;
+  if( nowTime - this.stallStart > Game._STALL_DROP_MS )
+    this.leaveCoop( 'Lost the connection to ' + this.partnerName + '.' ) ;
+} ;
+
+
+Game.prototype.isCoopStalled = function( ) {
+  if( this.stallStart === null || this.stallStart === undefined )
+    return false ;
+  var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+  return nowTime - this.stallStart > Game._STALL_NOTICE_MS ;
 } ;
 
 
@@ -646,7 +682,49 @@ Game.prototype._drawStep = function( ) {
   this._displayFade( this.surface ) ;
   this._displayFps( this.surface ) ;
   this._countFrame( drawStart ) ;
-  this._displayOnlineState(this.surface);
+  this._displayNotice( this.surface ) ;
+} ;
+
+
+// a line at the bottom for a few seconds, like "your partner left"
+Game.prototype.showNotice = function( text ) {
+  this.notice = text ;
+  this.noticeTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+} ;
+
+
+Game._NOTICE_MS = 6000 ;
+
+Game.prototype._displayNotice = function( surface ) {
+  var waiting = this.isCoopStalled( ) ;
+  if( ! this.notice && ! waiting )
+    return ;
+  var nowTime = window.performance ? window.performance.now( ) : Date.now( ) ;
+  var noticeText = this.notice ;
+  var noticeAlpha = 1 ;
+  if( waiting ) {
+    noticeText = 'Waiting for ' + this.partnerName + '...' ;
+  } else {
+    var shownMs = nowTime - this.noticeTime ;
+    if( shownMs > Game._NOTICE_MS ) {
+      this.notice = null ;
+      return ;
+    }
+    noticeAlpha = __clamp01( shownMs / 200 ) * __clamp01( ( Game._NOTICE_MS - shownMs ) / 600 ) ;
+  }
+
+  surface.save( ) ;
+  surface.font = '16px Arial' ;
+  surface.textAlign = 'center' ;
+  surface.textBaseline = 'middle' ;
+  var noticeWidth = surface.measureText( noticeText ).width + 40 ;
+  surface.globalAlpha = 0.75 * noticeAlpha ;
+  surface.fillStyle = 'rgb( 0, 0, 0 )' ;
+  surface.fillRect( this.width / 2 - noticeWidth / 2, this.height - 44, noticeWidth, 28 ) ;
+  surface.globalAlpha = noticeAlpha ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.fillText( noticeText, this.width / 2, this.height - 30 ) ;
+  surface.restore( ) ;
 } ;
 
 
@@ -713,33 +791,6 @@ Game.prototype._displayFps = function( surface ) {
 /**
  * TODO: temporal.
  */
-Game.prototype._displayOnlineState = function(surface) {
-  if(! this.debug || ! this.gs.connected())
-    return;
-
-  surface.save();
-  surface.textAlign = 'right';
-  surface.fillStyle = 'rgb(255, 255, 255)';
-  surface.font = '12px Arial';
-  surface.fillText(this.onlineActiveNum + ' playing now',
-                   this.getWidth() - 5,
-                   15);
-  if(this.someoneState >= 0) {
-    var x = (this.count - this.messageReceiveCount)*4 - 100;
-    if(x > 5)
-      x = 5;
-    surface.fillText('someone', this.getWidth() - x - 30, 30);
-    surface.fillText(Game._SOMEONE_MESSAGES[this.someoneState],
-                     this.getWidth() - x,
-                     45);
-  }
-  surface.restore();
-};
-
-
-/**
- * TODO: temporal.
- */
 Game.prototype.sendMessageToServer = function(key) {
   this.gs.send(key);
 };
@@ -773,17 +824,13 @@ Game.prototype.notifyCharacterSelectConclusion = function(index) {
     var p = {};
     p.i = index;
     p.s = seed;
-    if(this.lag)
-      p.l = this.lag;
+    p.n = this.coopRun;
     this.meParams = p;
     this.waitingOther = true;
-    this._startSync(p);
-    if(this.receivedOther) {
+    this.coopLink.send({id: this._PEER_ID_START, p: p});
+    if(this.receivedOther)
       this._changeState(Game._STATE_IN_STAGE,
                         this._makeStageStateParameterForMultiPlay());
-      if(this.onRan !== null)
-        this.onRan();
-    }
   } else {
     var params = {};
     params.characterIndex = index; // me
@@ -816,30 +863,29 @@ Game.prototype.notifyReplaySelectConclusion = function( params ) {
 Game.prototype.notifyQuitStage = function( flag ) {
   // after a finished run, ask to save the replay in the browser
   var stage = this.states[ Game._STATE_IN_STAGE ] ;
+  if(this.isMultiPlay())
+    this.resetSyncParams();
   if( flag && ! this.isMultiPlay( ) && stage.canSaveReplay( ) )
     this._changeState( Game._STATE_POST_REPLAY, { } ) ;
   else
     this._changeState( Game._STATE_OPENING, { } ) ;
-
-  // TODO: temporal
-  if(this.isMultiPlay())
-    this.resetSyncParams();
 } ;
 
 
 Game.prototype.notifyGameClear = function( ) {
 //  this._changeState( Game._STATE_ENDING, { } ) ;
-  this._changeState( Game._STATE_STAFF_ROLL, { } ) ;
-
-  // TODO: temporal
   if(this.isMultiPlay())
     this.resetSyncParams();
+  this._changeState( Game._STATE_STAFF_ROLL, { } ) ;
 } ;
 
 
 Game._FADE_SPAN = 18 ;
 
 Game.prototype._changeState = function( state, params ) {
+  // a co-op pair goes back to picking characters instead of the title
+  if( state == Game._STATE_OPENING && this.isMultiPlay( ) )
+    state = Game._STATE_CHARA_SEL ;
   if( state != this.state )
     this.fadeCount = Game._FADE_SPAN ;
   this.state = state ;
@@ -872,98 +918,94 @@ Game.prototype.clearFlag = function( type ) {
 } ;
 
 
-Game.prototype.setLag = function(lag) {
-  this.lag = lag;
-};
+// the co-op connection this page can use, or null when there is none
+Game.prototype.getCoopLink = function( ) {
+  if( this.coopLink )
+    return this.coopLink ;
+  var coopKind = CoopLink.detect( ) ;
+  if( coopKind )
+    this.coopLink = new CoopLink( this, coopKind ) ;
+  return this.coopLink ;
+} ;
 
 
-Game.prototype.setRoom = function(room) {
-  this.room = room;
-  this.peer = new Peer(this.room, this._WS_URL, this);
-  this.peer.createPeerConnection();
-  this.multiPlay = true;
-};
+Game.prototype.notifyCoopPaired = function( isMaster, partnerName, lag ) {
+  this.multiPlay = true ;
+  this.master = isMaster ;
+  this.partnerName = partnerName ;
+  this.lag = Math.max( 1, Math.min( 20, Math.round( lag ) ) ) ;
+  this.coopRun = 0 ;
+  this.otherParams = null ;
+  this.resetSyncParams( ) ;
+  this.coopRun = 0 ;
+  this.stallStart = null ;
+  this.pendingPractice = null ;
+  this._changeState( Game._STATE_CHARA_SEL, { } ) ;
+} ;
 
 
-Game.prototype.notifyWsReady = function(e) {
-  if(this.onWsReady !== null)
-    this.onWsReady(e);
-};
+Game.prototype.notifyCoopClosed = function( reason ) {
+  var closeText = this.partnerName + ' left the co-op game.' ;
+  if( reason == 'desync' )
+    closeText = 'The two games went out of sync, so the co-op game ended.' ;
+  this._endCoop( closeText ) ;
+} ;
 
 
-Game.prototype.notifyRoomUpdate = function(num) {
-  if(this.onRoomUpdate !== null)
-    this.onRoomUpdate(num);
-};
+// this side ends the session
+Game.prototype.leaveCoop = function( text ) {
+  if( ! this.isMultiPlay( ) )
+    return ;
+  if( this.coopLink )
+    this.coopLink.leave( ) ;
+  this._endCoop( text ) ;
+} ;
 
 
-Game.prototype.connect = function() {
-  this.peer.offer();
-  this.master = true;
-};
+Game.prototype._endCoop = function( text ) {
+  if( ! this.isMultiPlay( ) )
+    return ;
+  this.multiPlay = false ;
+  this.master = false ;
+  this.waitingOther = false ;
+  this.receivedOther = false ;
+  this.otherParams = null ;
+  this.meParams = null ;
+  this.stallStart = null ;
+  if( text )
+    this.showNotice( text ) ;
+  this._changeState( Game._STATE_OPENING, { } ) ;
+} ;
 
 
-Game.prototype.notifyOpenPeer = function(e) {
-  this.connected = true;
-  if(this.onConnected !== null)
-    this.onConnected(e);
-};
+Game.prototype.getPartnerName = function( ) {
+  return this.partnerName ;
+} ;
 
 
-Game.prototype._startSync = function(params) {
-  this.peer.send({id: this._PEER_ID_START, p: params});
-  if(this.onSentParams !== null)
-    this.onSentParams();
-};
+Game.prototype.isWaitingOther = function( ) {
+  return this.isMultiPlay( ) && this.waitingOther ;
+} ;
 
 
 Game.prototype.sync = function(params) {
-  // TODO: temporal impl to reduce the amount data transferred.
-//  this.peer.send({id: this._PEER_ID_SYNC, p: params});
-  this.peer.send(params);
+  this.coopLink.send(params);
 };
 
 
 Game.prototype.receiveFromPeer = function(data) {
-  // TODO: temporal impl to reduce the amount data transferred.
-/*
-  switch(data.id) {
-    case this._PEER_ID_START:
-      this.receivedOther = true;
-      this.otherParams = data.p;
-      if(this.waitingOther) {
-        this._changeState(Game._STATE_IN_STAGE,
-                          this._makeStageStateParameterForMultiPlay());
-        if(this.onRan !== null)
-          this.onRan();
-      }
-      break;
-    case this._PEER_ID_SYNC:
-      this.states[this.state].receiveFromPeer(data.p);
-      break;
+  if(! this.isMultiPlay() || ! data)
+    return;
+  if(data.id === this._PEER_ID_START) {
+    this.otherParams = data.p;
+    this.receivedOther = data.p.n == this.coopRun;
+    if(this.receivedOther && this.waitingOther)
+      this._changeState(Game._STATE_IN_STAGE,
+                        this._makeStageStateParameterForMultiPlay());
+    return;
   }
-*/
-  if(data.id !== void 0) {
-    switch(data.id) {
-      case this._PEER_ID_START:
-        this.receivedOther = true;
-        this.otherParams = data.p;
-        if(this.waitingOther) {
-          this._changeState(Game._STATE_IN_STAGE,
-                            this._makeStageStateParameterForMultiPlay());
-          if(this.onRan !== null)
-            this.onRan();
-        }
-        break;
-      case this._PEER_ID_SYNC:
-        this.states[this.state].receiveFromPeer(data.p);
-        break;
-    }
-  } else {
+  if(this.state == Game._STATE_IN_STAGE)
     this.states[this.state].receiveFromPeer(data);
-  }
-
-
 };
 
 
@@ -975,14 +1017,8 @@ Game.prototype._makeStageStateParameterForMultiPlay = function() {
   p.seed = this.meParams.s > this.otherParams.s
              ? this.meParams.s : this.otherParams.s;
 
-  if(this.meParams.l !== void 0 && this.otherParams.l === void 0) {
-    p.lag = this.meParams.l;
-  } else if(this.meParams.l === void 0 && this.otherParams.l !== void 0) {
-    p.lag = this.otherParams.l;
-  } else if(this.meParams.l !== void 0 && this.otherParams.l !== void 0) {
-    p.lag = this.meParams.l > this.otherParams.l
-              ? this.meParams.l : this.otherParams.l;
-  }
+  p.lag = this.lag;
+  this.waitingOther = false;
 
   return p;
 };
@@ -998,18 +1034,10 @@ Game.prototype.isMaster = function() {
 };
 
 
-Game.prototype.isConnected = function() {
-  return this.connected;
-};
-
-
+// gets ready for the next run. a partner who already picked for it is remembered
 Game.prototype.resetSyncParams = function() {
+  this.coopRun++;
   this.waitingOther = false;
-  this.receivedOther = false;
-  this.otherParams = null;
   this.meParams = null;
-
-  // TODO: temporal
-  if(this.onConnected !== null)
-    this.onConnected();
+  this.receivedOther = this.otherParams ? this.otherParams.n == this.coopRun : false;
 };
