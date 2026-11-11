@@ -240,8 +240,10 @@ StageState.prototype.init = function( params ) {
   this._resetEosdState( ) ;
   this.hiScore = this._loadHiScore( ) ;
 
-  // practice: start at a stage, or right at one spell card
+  // practice: start at a stage, or right at one spell card. a practice replay brings its own
   this.practice = params.practice || null ;
+  if( params.autoplay )
+    this.practice = params.autoplayParams.practice || null ;
   this.practiceEndCount = -1 ;
   if( this.practice ) {
     this._moveToStage( this.practice.stage, this.practice.boss ) ;
@@ -548,7 +550,7 @@ StageState.prototype.runStep = function( ) {
 
   if( this.practiceEndCount >= 0 && this.animationCount - this.practiceEndCount > 120 ) {
     this.practiceEndCount = -1 ;
-    this.game.notifyQuitStage( ) ;
+    this.game.notifyQuitStage( ! this.isFlagSet( this._FLAG_AUTO_PLAY ) ) ;
     return ;
   }
   this._runMessages( ) ;
@@ -856,6 +858,7 @@ StageState.prototype._drawSide = function(surface) {
   var shownHiScore = Math.max(this.hiScore || 0, this.viewScore);
   var sideKey = [shownHiScore, this.viewScore, this.players, this.bombs,
                  this.fighter.isFullPower() ? 'MAX' : this.fighter.getPower(),
+                 this.fighter2 && this.game.isMultiPlay() ? this.fighter2.getPower() : '',
                  this.graze, this.pointItems, this._getFaceImage().src, this.game.scale].join('|');
   var sideScale = this.game.scale;
   if(! this.sideCanvas || this.sideCanvasScale != sideScale) {
@@ -905,8 +908,21 @@ StageState.prototype._drawSidePanel = function(surface, sideX) {
 
   var powerText = this.fighter.isFullPower() ? 'MAX' : this.fighter.getPower();
   this._drawSideRow(surface, 'Power', powerText, labelX, valueX, 170);
-  this._drawSideRow(surface, 'Graze', this.graze, labelX, valueX, 190);
-  this._drawSideRow(surface, 'Point', this.pointItems, labelX, valueX, 210);
+  // co-op: the partner's power under yours, with their name in their color
+  var rowShift = 0;
+  if(this.game.isMultiPlay() && this.fighter2) {
+    rowShift = 20;
+    var partnerPower = this.fighter2.isFullPower() ? 'MAX' : this.fighter2.getPower();
+    this._drawSideRow(surface, '', partnerPower, labelX, valueX, 190);
+    surface.font = 'italic 14px Arial';
+    surface.textAlign = 'left';
+    surface.fillStyle = 'rgb(160, 220, 255)';
+    surface.fillText(this._fitSideName(surface, this.game.getPartnerName(), 90), labelX, 190);
+    surface.fillStyle = 'rgb(255, 255, 255)';
+    surface.font = '14px Arial';
+  }
+  this._drawSideRow(surface, 'Graze', this.graze, labelX, valueX, 190 + rowShift);
+  this._drawSideRow(surface, 'Point', this.pointItems, labelX, valueX, 210 + rowShift);
 
   if(! this.game.debug) {
     surface.restore();
@@ -915,6 +931,7 @@ StageState.prototype._drawSidePanel = function(surface, sideX) {
 
   surface.font = '12px Arial';
   surface.textAlign = 'left';
+  surface.translate(0, rowShift);
   surface.fillText('for debug', sideX + 15, 240);
   surface.textAlign = 'right';
   surface.fillText(this.count, sideX + 80, 256);
@@ -927,6 +944,15 @@ StageState.prototype._drawSidePanel = function(surface, sideX) {
   surface.fillText(this.effectManager.getNum(), sideX + 140, 270);
 
   surface.restore();
+};
+
+
+StageState.prototype._fitSideName = function(surface, name, maxWidth) {
+  if(surface.measureText(name).width <= maxWidth)
+    return name;
+  while(name.length > 1 && surface.measureText(name + '...').width > maxWidth)
+    name = name.slice(0, -1);
+  return name + '...';
 };
 
 
@@ -1120,7 +1146,7 @@ StageState.prototype.putKeyOffRecord = function( record ) {
 
 // only normal single play runs with no cheats get saved
 StageState.prototype.canSaveReplay = function( ) {
-  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && ! this.practice && ! this.didContinue && this.playRecords.length > 0 ;
+  return ! this.isFlagSet( this._FLAG_AUTO_PLAY ) && ! this.cheated && ! this.didContinue && this.playRecords.length > 0 ;
 } ;
 
 
@@ -1133,6 +1159,7 @@ StageState.prototype.exportLocalReplay = function( ) {
     'lives': this.getStartPlayers( ),
     'bombs': this.getStartBombs( ),
     'score': this.score,
+    'practice': this.practice,
     'datetime': new Date( ).getTime( ),
     'params': this.playRecords
   } ;
@@ -3125,7 +3152,7 @@ ClearState.prototype.updateDisplay = function( surface ) {
 ClearState.prototype._toNextStage = function( ) {
   // stage practice ends with the stage
   if( this.stage.practice ) {
-    this.stage.game.notifyQuitStage( ) ;
+    this.stage.game.notifyQuitStage( ! this.stage.isFlagSet( this.stage._FLAG_AUTO_PLAY ) ) ;
     return ;
   }
   this.stage.stageIndex++ ;

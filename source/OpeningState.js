@@ -216,7 +216,8 @@ TitleState._CONTROLS = [
   [ 'Shift', 'slow' ],
   [ 'Ctrl', 'hold to skip dialogue' ],
   [ 'Space', 'character change (for debug)' ],
-  [ 'Y', 'viewpoint change' ]
+  [ 'Y', 'viewpoint change' ],
+  [ 'Esc / P', 'pause (co-op: press twice to leave)' ]
 ] ;
 
 TitleState._WIDTH = 1280 ;
@@ -696,7 +697,7 @@ TitleState.prototype._displayControls = function( surface ) {
 
   surface.font = "20px 'Comic Sans MS'" ;
   for( var i = 0; i < TitleState._CONTROLS.length; i++ ) {
-    var lineY = 180 + i * 38 ;
+    var lineY = 170 + i * 33 ;
     surface.textAlign = 'right' ;
     surface.fillText( TitleState._CONTROLS[ i ][ 0 ], width / 2 - 30, lineY ) ;
     surface.textAlign = 'left' ;
@@ -706,7 +707,7 @@ TitleState.prototype._displayControls = function( surface ) {
   surface.font = "16px 'Comic Sans MS'" ;
   surface.textAlign = 'center' ;
   surface.globalAlpha = 0.6 * this.panelAlpha ;
-  surface.fillText( 'Press Z or X to go back', width / 2, height - 80 ) ;
+  surface.fillText( 'Press Z or X to go back', width / 2, height - 45 ) ;
   surface.restore( ) ;
 } ;
 
