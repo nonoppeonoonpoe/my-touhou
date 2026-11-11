@@ -14,8 +14,6 @@ ReplaySelectState._STATE_SELECT               = 0x3 ;
 ReplaySelectState._STATE_REPLAY_LOADING       = 0x4 ;
 ReplaySelectState._STATE_REPLAY_LOADING_ERROR = 0x5 ;
 
-// the old replay server is gone, the replays that came with the game are in replay/
-ReplaySelectState._DIR = 'replay/' ;
 
 
 ReplaySelectState.prototype.init = function( ) {
@@ -26,60 +24,19 @@ ReplaySelectState.prototype.init = function( ) {
 } ;
 
 
-// the replay files are plain js objects (no quotes on keys), not json
-ReplaySelectState.prototype._readText = function( text ) {
-  return ( new Function( 'return (' + text + ') ;' ) )( ) ;
-} ;
-
-
-ReplaySelectState.prototype._loadFile = function( path, onLoad, errorState ) {
-  var xhr = new XMLHttpRequest( ) ;
-  xhr.open( 'GET', ReplaySelectState._DIR + path, true ) ;
-  var self = this ;
-  xhr.onload = function( ) {
-    var data = null ;
-    try {
-      if( xhr.status == 200 || xhr.status == 0 )
-        data = self._readText( xhr.responseText ) ;
-    } catch( err ) {
-      data = null ;
-    }
-    if( data )
-      onLoad( data ) ;
-    else
-      self.state = errorState ;
-  } ;
-  xhr.onerror = function( ) {
-    self.state = errorState ;
-  } ;
-  xhr.send( null ) ;
-} ;
-
-
+// only the replays saved in this browser, the ones that came with the game are gone
 ReplaySelectState.prototype.loadReplayList = function( ) {
-  var self = this ;
-  // replays saved in this browser come first, then the ones that came with the game
-  var savedReplays = this.game.loadSavedReplays( ) ;
-  this._loadFile( 'replay_list.txt', function( list ) {
-    self.list = savedReplays.concat( list ) ;
-    self.state = ReplaySelectState._STATE_SELECT ;
-  }, ReplaySelectState._STATE_LIST_LOADING_ERROR ) ;
-  this.state = ReplaySelectState._STATE_LIST_LOADING ;
+  this.list = this.game.loadSavedReplays( ).filter( function( replay ) {
+    return replay && replay.eosd ;
+  } ) ;
+  this.state = ReplaySelectState._STATE_SELECT ;
 } ;
 
 
 ReplaySelectState.prototype.loadReplay = function( ) {
   if( this.state != ReplaySelectState._STATE_SELECT || this.list.length == 0 )
     return ;
-  var self = this ;
-  if( this.list[ this.index ].eosd ) {
-    this.game.notifyReplaySelectConclusion( this.list[ this.index ] ) ;
-    return ;
-  }
-  this._loadFile( 'replay' + this.list[ this.index ].id + '.txt', function( params ) {
-    self.game.notifyReplaySelectConclusion( params ) ;
-  }, ReplaySelectState._STATE_REPLAY_LOADING_ERROR ) ;
-  this.state = ReplaySelectState._STATE_REPLAY_LOADING ;
+  this.game.notifyReplaySelectConclusion( this.list[ this.index ] ) ;
 } ;
 
 
@@ -110,7 +67,10 @@ ReplaySelectState.prototype.updateDisplay = function( surface ) {
     case ReplaySelectState._STATE_LIST_LOADING_ERROR:
       break ;
     case ReplaySelectState._STATE_SELECT:
-      this._displayList( surface ) ;
+      if( this.list.length == 0 )
+        this._displayEmpty( surface ) ;
+      else
+        this._displayList( surface ) ;
       break ;
     case ReplaySelectState._STATE_REPLAY_LOADING:
       break ;
@@ -181,50 +141,61 @@ ReplaySelectState.prototype._displayList = function( surface ) {
   surface.textAlign = 'left' ;
   surface.textBaseAlign = 'middle' ;
   // rows slide in one after another, a bar glides to the picked one
-  var barGradient = surface.createLinearGradient( w - 20, 0, w + 480, 0 ) ;
+  var barGradient = surface.createLinearGradient( w - 20, 0, w + 560, 0 ) ;
   barGradient.addColorStop( 0, 'rgba( 220, 60, 80, 0.5 )' ) ;
   barGradient.addColorStop( 1, 'rgba( 220, 60, 80, 0 )' ) ;
   surface.globalAlpha = __easeOut( this.selectCount / 15 ) ;
   surface.fillStyle = barGradient ;
-  surface.fillRect( w - 20, this.barY - 15, 500, 20 ) ;
+  surface.fillRect( w - 20, this.barY - 15, 580, 20 ) ;
   surface.fillStyle = 'rgb( 255, 255, 255 )' ;
   for( var i = 0; i < this.list.length; i++ ) {
     var rowTime = __easeOut( __animTime( this.selectCount, i * 3, 16 ) ) ;
     surface.globalAlpha = ( i == this.index ? 1.0 : 0.4 ) * rowTime ;
-    surface.fillText( this._buildReplayStrings( this.list[ i ] ), w - 40 * ( 1 - rowTime ) + ( i == this.index ? 6 : 0 ), h + 20 * i ) ;
+    this._drawRow( surface, this.list[ i ], w - 40 * ( 1 - rowTime ) + ( i == this.index ? 6 : 0 ), h + 20 * i ) ;
   }
   surface.restore( ) ;
 } ;
 
 
-ReplaySelectState.prototype._buildReplayStrings = function( params ) {
-  var buffer = '' ;
-  if( params.eosd )
-    buffer += 'Saved: ' + params.score + ' ' ;
-  else
-    buffer += params.id + ': ' + params.user + ' ' ;
-  if( params.characterIndex == 0 ) {
-    buffer += 'Reimu' ;
-  } else {
-    buffer += 'Marisa' ;
-  }
-  buffer += ' ' + this._toStringsFromDate( params.datetime ) ;
-  return buffer ;
+ReplaySelectState.prototype._displayEmpty = function( surface ) {
+  surface.save( ) ;
+  surface.font = "18px 'Comic Sans MS'" ;
+  surface.textAlign = 'center' ;
+  surface.fillStyle = 'rgb( 255, 255, 255 )' ;
+  surface.globalAlpha = 0.7 ;
+  surface.fillText( 'No saved replays yet.', this.getWidth( ) / 2, this.getHeight( ) / 2 - 15 ) ;
+  surface.fillText( 'Finish a run or a practice to save one. X goes back.', this.getWidth( ) / 2, this.getHeight( ) / 2 + 15 ) ;
+  surface.restore( ) ;
+} ;
+
+
+// what was played, the score, who, and when, each in its own column
+ReplaySelectState.prototype._drawRow = function( surface, params, rowX, rowY ) {
+  var whatText = params.practice ? 'Practice ' + params.practice.label : 'Full game' ;
+  surface.textAlign = 'left' ;
+  surface.fillText( this._fitText( surface, whatText, 250 ), rowX, rowY ) ;
+  surface.textAlign = 'right' ;
+  surface.fillText( params.score, rowX + 360, rowY ) ;
+  surface.textAlign = 'left' ;
+  surface.fillText( params.characterIndex == 0 ? 'Reimu' : 'Marisa', rowX + 375, rowY ) ;
+  surface.fillText( this._toStringsFromDate( params.datetime ), rowX + 440, rowY ) ;
+} ;
+
+
+ReplaySelectState.prototype._fitText = function( surface, text, maxWidth ) {
+  if( surface.measureText( text ).width <= maxWidth )
+    return text ;
+  while( text.length > 1 && surface.measureText( text + '...' ).width > maxWidth )
+    text = text.slice( 0, -1 ) ;
+  return text + '...' ;
 } ;
 
 
 ReplaySelectState.prototype._toStringsFromDate = function( s ) {
   var date = new Date( s ) ;
-  return [
-           date.getMonth( ) + 1,
-           date.getDate( ),
-           date.getFullYear( ),
-         ].join( '/' ) + ' ' +
-         [
-           date.getHours( ),
-           date.getMinutes( ),
-           date.getSeconds( ),
-         ].join( ':' ) ;
+  var minutes = date.getMinutes( ) ;
+  return ( date.getMonth( ) + 1 ) + '/' + date.getDate( ) + ' ' +
+         date.getHours( ) + ':' + ( minutes < 10 ? '0' : '' ) + minutes ;
 } ;
 
 
@@ -239,7 +210,7 @@ ReplaySelectState.prototype.handleKeyDown = function( e ) {
     case 40: // down
       this.index++ ;
       if( this.index >= this.list.length )
-        this.index = this.list.length - 1 ;
+        this.index = Math.max( 0, this.list.length - 1 ) ;
       this._soundEffect( Game._SE_SELECT ) ;
       break ;
     case 88: // x
