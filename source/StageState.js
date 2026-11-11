@@ -705,7 +705,7 @@ StageState.prototype.updateDisplay = function( surface ) {
  */
 // the background eases darker during bombs and spell cards
 StageState.prototype._displayBG = function() {
-  this.backgroundManager.draw(this.game.bgLayer, this.fx.bgDark);
+  this.backgroundManager.draw(this.game.bgLayer, this.fx.bgDark, this.fx.spellBgKey, this.fx.spellBgAlpha);
 };
 
 
@@ -2736,12 +2736,14 @@ __inherit( TalkState, StageAbstractState ) ;
 
 
 TalkState._NAMES = { 'reimu': 'Reimu', 'marisa': 'Marisa', 'rumia': 'Rumia', 'daiyousei': 'Daiyousei',
-                     'chilno': 'Cirno', 'kogasa': 'Kogasa', 'keine': 'Keine', 'mokou': 'Mokou' } ;
+                     'chilno': 'Cirno', 'kogasa': 'Kogasa', 'keine': 'Keine', 'mokou': 'Mokou',
+                     'medicine': 'Medicine', 'alice': 'Alice' } ;
 
 TalkState._NAME_COLORS = { 'reimu': 'rgb( 220, 60, 70 )', 'marisa': 'rgb( 220, 180, 50 )',
                            'rumia': 'rgb( 150, 90, 200 )', 'daiyousei': 'rgb( 90, 190, 110 )',
                            'chilno': 'rgb( 80, 160, 230 )', 'kogasa': 'rgb( 130, 90, 210 )',
-                           'keine': 'rgb( 70, 120, 200 )', 'mokou': 'rgb( 230, 110, 60 )' } ;
+                           'keine': 'rgb( 70, 120, 200 )', 'mokou': 'rgb( 230, 110, 60 )',
+                           'medicine': 'rgb( 200, 90, 160 )', 'alice': 'rgb( 110, 150, 230 )' } ;
 
 // letters typed per step, and how long portraits and the window take to come in
 TalkState._TYPE_SPEED = 1.2 ;

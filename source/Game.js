@@ -168,6 +168,17 @@ Game._IMG_ENEMY_KEINE     = 40;
 Game._IMG_STAND_KOGASA    = 41;
 Game._IMG_STAND_KEINE     = 42;
 Game._IMG_BG3             = 43;
+Game._IMG_ENEMY_MEDICINE  = 44;
+Game._IMG_ENEMY_ALICE     = 45;
+Game._IMG_STAND_MEDICINE  = 46;
+Game._IMG_STAND_ALICE     = 47;
+Game._IMG_BG4             = 48;
+Game._IMG_SPELL_RUMIA     = 49;
+Game._IMG_SPELL_CHILNO    = 50;
+Game._IMG_SPELL_KOGASA    = 51;
+Game._IMG_SPELL_KEINE     = 52;
+Game._IMG_SPELL_MEDICINE  = 53;
+Game._IMG_SPELL_ALICE     = 54;
 
 Game._IMGS = { } ;
 Game._IMGS[Game._IMG_FIGHTER]            = 'image/fighter.png';
@@ -214,21 +225,34 @@ Game._IMGS[ Game._IMG_ENEMY_KEINE ]      = 'image/keine.png' ;
 Game._IMGS[ Game._IMG_STAND_KOGASA ]     = 'image/kogasa_stand.png' ;
 Game._IMGS[ Game._IMG_STAND_KEINE ]      = 'image/keine_stand.png' ;
 Game._IMGS[ Game._IMG_BG3 ]              = 'image/bg3.png' ;
+Game._IMGS[ Game._IMG_ENEMY_MEDICINE ]   = 'image/medicine.png' ;
+Game._IMGS[ Game._IMG_ENEMY_ALICE ]      = 'image/alice.png' ;
+Game._IMGS[ Game._IMG_STAND_MEDICINE ]   = 'image/medicine_stand.png' ;
+Game._IMGS[ Game._IMG_STAND_ALICE ]      = 'image/alice_stand.png' ;
+Game._IMGS[ Game._IMG_BG4 ]              = 'image/bg4.png' ;
+Game._IMGS[ Game._IMG_SPELL_RUMIA ]      = 'image/spell_rumia.png' ;
+Game._IMGS[ Game._IMG_SPELL_CHILNO ]     = 'image/spell_chilno.png' ;
+Game._IMGS[ Game._IMG_SPELL_KOGASA ]     = 'image/spell_kogasa.png' ;
+Game._IMGS[ Game._IMG_SPELL_KEINE ]      = 'image/spell_keine.png' ;
+Game._IMGS[ Game._IMG_SPELL_MEDICINE ]   = 'image/spell_medicine.png' ;
+Game._IMGS[ Game._IMG_SPELL_ALICE ]      = 'image/spell_alice.png' ;
 
-// boss sprite sheet and portrait for each character, portraits are drawn at standWidth x 600
+// boss sprite sheet, portrait and spell card background for each character, portraits are drawn at standWidth x 600
 Game._CHARACTERS = {
-  'reimu':     { 'sheet': null,                      'stand': Game._IMG_STAND_REIMU,  'standWidth': 400 },
-  'marisa':    { 'sheet': null,                      'stand': Game._IMG_STAND_MARISA, 'standWidth': 400 },
-  'mokou':     { 'sheet': Game._IMG_ENEMY_MOKOU,     'stand': Game._IMG_STAND_MOKOU,  'standWidth': 512 },
-  'rumia':     { 'sheet': Game._IMG_ENEMY_RUMIA,     'stand': Game._IMG_STAND_RUMIA,  'standWidth': 600 },
-  'daiyousei': { 'sheet': Game._IMG_ENEMY_DAIYOUSEI, 'stand': null,                   'standWidth': 600 },
-  'chilno':    { 'sheet': Game._IMG_ENEMY_CHILNO,    'stand': Game._IMG_STAND_CHILNO, 'standWidth': 550 },
-  'kogasa':    { 'sheet': Game._IMG_ENEMY_KOGASA,    'stand': Game._IMG_STAND_KOGASA, 'standWidth': 600 },
-  'keine':     { 'sheet': Game._IMG_ENEMY_KEINE,     'stand': Game._IMG_STAND_KEINE,  'standWidth': 600 }
+  'reimu':     { 'sheet': null,                      'stand': Game._IMG_STAND_REIMU,    'standWidth': 400, 'spellBg': null },
+  'marisa':    { 'sheet': null,                      'stand': Game._IMG_STAND_MARISA,   'standWidth': 400, 'spellBg': null },
+  'mokou':     { 'sheet': Game._IMG_ENEMY_MOKOU,     'stand': Game._IMG_STAND_MOKOU,    'standWidth': 512, 'spellBg': null },
+  'rumia':     { 'sheet': Game._IMG_ENEMY_RUMIA,     'stand': Game._IMG_STAND_RUMIA,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_RUMIA },
+  'daiyousei': { 'sheet': Game._IMG_ENEMY_DAIYOUSEI, 'stand': null,                     'standWidth': 600, 'spellBg': null },
+  'chilno':    { 'sheet': Game._IMG_ENEMY_CHILNO,    'stand': Game._IMG_STAND_CHILNO,   'standWidth': 550, 'spellBg': Game._IMG_SPELL_CHILNO },
+  'kogasa':    { 'sheet': Game._IMG_ENEMY_KOGASA,    'stand': Game._IMG_STAND_KOGASA,   'standWidth': 600, 'spellBg': Game._IMG_SPELL_KOGASA },
+  'keine':     { 'sheet': Game._IMG_ENEMY_KEINE,     'stand': Game._IMG_STAND_KEINE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_KEINE },
+  'medicine':  { 'sheet': Game._IMG_ENEMY_MEDICINE,  'stand': Game._IMG_STAND_MEDICINE, 'standWidth': 600, 'spellBg': Game._IMG_SPELL_MEDICINE },
+  'alice':     { 'sheet': Game._IMG_ENEMY_ALICE,     'stand': Game._IMG_STAND_ALICE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_ALICE }
 } ;
 
 // one background per stage, in order
-Game._STAGE_BGS = [ Game._IMG_BG1, Game._IMG_BG2, Game._IMG_BG3 ] ;
+Game._STAGE_BGS = [ Game._IMG_BG1, Game._IMG_BG2, Game._IMG_BG3, Game._IMG_BG4 ] ;
 
 Game._BGM_TITLE  = 0 ;
 Game._BGM_1      = 1 ;
