@@ -10,6 +10,40 @@ var __stage4Bullets = { } ;
 ( function( ) {
   var T = __stage3Types ;
 
+  function addType( name, indexX, indexY, small ) {
+    __stage4Types[ name ] = __enemyBulletTypes.length ;
+    __enemyBulletTypes.push( {
+      'indexX': indexX,
+      'indexY': indexY,
+      'width': 16,
+      'height': 16,
+      'collisionWidth': small ? 5 : 10,
+      'collisionHeight': small ? 5 : 10,
+      'rotate': small ? true : false
+    } ) ;
+  }
+
+  // the big 32 pixel shapes on the right half of the bullet sheet: flowers, hearts, stars, dolls, notes, gears, butterflies
+  var bigColors = { 'white': 0, 'red': 1, 'yellow': 2, 'green': 3, 'cyan': 4, 'blue': 5, 'purple': 6, 'pink': 7 } ;
+  var bigShapes = { 'Flower': 0, 'Heart': 1, 'Star': 2, 'Doll': 3, 'Dancer': 4, 'Note': 5, 'Gear': 6, 'Butterfly': 7 } ;
+  for( var shapeName in bigShapes ) {
+    for( var colorName in bigColors ) {
+      __stage4Types[ colorName + shapeName ] = __enemyBulletTypes.length ;
+      __enemyBulletTypes.push( {
+        'indexX': 8 + bigColors[ colorName ],
+        'indexY': bigShapes[ shapeName ],
+        'width': 32,
+        'height': 32,
+        'collisionWidth': 10,
+        'collisionHeight': 10,
+        'rotate': false
+      } ) ;
+    }
+  }
+
+  addType( 'purpleKunai', 4, 5, true ) ;
+  addType( 'greenKunai', 10, 5, true ) ;
+
   function addBullet( name, bulletList ) {
     __stage4Bullets[ name ] = __enemyBulletsParams.length ;
     __enemyBulletsParams.push( bulletList ) ;
@@ -99,13 +133,13 @@ var __stage4Bullets = { } ;
   addBullet( 'aimOne', aimedFan( 1, 0, 3.4 ) ) ;
 
   // alice
-  // a line of dolls in front of her, each one fires a small aimed fan from its own spot
+  // a line of dolls in front of her, each one sends three dolls at the player from its own spot
   var dollSpots = [ -96, -48, 48, 96 ] ;
   var dollVolley = [ ] ;
   for( var doll = 0; doll < dollSpots.length; doll++ ) {
     for( var aimNum = 0; aimNum < 3; aimNum++ ) {
-      dollVolley.push( { 'x': dollSpots[ doll ], 'y': 24 - Math.abs( dollSpots[ doll ] ) / 4,
-                         'v': { 'aimed': true, 'r': 3, 'theta': -10 + aimNum * 10 } } ) ;
+      dollVolley.push( { 'count': aimNum * 12, 'x': dollSpots[ doll ], 'y': 24 - Math.abs( dollSpots[ doll ] ) / 4,
+                         'v': { 'aimed': true, 'r': 3, 'theta': 0 } } ) ;
     }
   }
   addBullet( 'dollVolley', dollVolley ) ;
@@ -164,21 +198,6 @@ var __stage4Bullets = { } ;
   addBullet( 'gearLeft', gear( 1.4, 0 ) ) ;
   addBullet( 'gearRight', gear( -1.4, 30 ) ) ;
 
-  function addType( name, indexX, indexY, small ) {
-    __stage4Types[ name ] = __enemyBulletTypes.length ;
-    __enemyBulletTypes.push( {
-      'indexX': indexX,
-      'indexY': indexY,
-      'width': 16,
-      'height': 16,
-      'collisionWidth': small ? 5 : 10,
-      'collisionHeight': small ? 5 : 10,
-      'rotate': small ? true : false
-    } ) ;
-  }
-
-  addType( 'purpleKunai', 4, 5, true ) ;
-  addType( 'greenKunai', 10, 5, true ) ;
 
   // lily gate: a quick aimed pair
   addBullet( 'gatePair', aimedFan( 2, 8, 4 ) ) ;
@@ -232,6 +251,7 @@ var __stage4EnemiesParams = [ ] ;
   var B = __stage4Bullets ;
   var B3 = __stage3Bullets ;
   var T = __stage3Types ;
+  var T4 = __stage4Types ;
   var list = __stage4EnemiesParams ;
 
   // the hill of lilies: pale fairies drift down in a zigzag and shed pollen
@@ -245,8 +265,8 @@ var __stage4EnemiesParams = [ ] ;
       'powerItem': i % 3 == 0 ? 1 : 0,
       'scoreItem': i % 3 != 0 ? 1 : 0,
       's': [
-        { 'bullet': B.pollen,    'type': T.yellowDot, 'shotCount': [ 30, 90 ] },
-        { 'bullet': B.pollenOff, 'type': T.yellowDot, 'shotCount': [ 60 ] }
+        { 'bullet': B.pollen,    'type': T4.whiteFlower, 'shotCount': [ 30, 90 ] },
+        { 'bullet': B.pollenOff, 'type': T4.yellowFlower, 'shotCount': [ 60 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 1.8, 'theta': fromLeft ? 60 : 120 } },
@@ -332,7 +352,7 @@ var __stage4EnemiesParams = [ ] ;
       'vital': 4,
       'powerItem': flutter % 2 == 0 ? 1 : 0,
       'scoreItem': 1,
-      's': { 'bullet': B.pollen, 'type': T.yellowDot, 'shotCount': [ 40 ] },
+      's': { 'bullet': B.pollen, 'type': T4.yellowFlower, 'shotCount': [ 40 ] },
       'v': [
         { 'count': 0,  'v': { 'r': 3, 'theta': 90, 'ra': -0.05, 'rrange': { 'min': 0.6 } } },
         { 'count': 70, 'v': { 'r': 0.6, 'theta': flutter % 2 == 0 ? 330 : 210, 'ra': 0.05 } }
@@ -407,7 +427,7 @@ var __stage4EnemiesParams = [ ] ;
       'scoreItem': 4,
       's': [
         { 'bullet': B.ringEighteen,    'type': T.blueOrb,  'shotCount': [ 60, 140, 220 ] },
-        { 'bullet': B.ringEighteenOff, 'type': T.greenOrb, 'shotCount': [ 100, 180, 260 ] }
+        { 'bullet': B.ringEighteenOff, 'type': T4.yellowStar, 'shotCount': [ 100, 180, 260 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 2, 'theta': 90, 'ra': -0.03, 'rrange': { 'min': 0 } } },
@@ -431,8 +451,6 @@ var __stage4EnemiesParams = [ ] ;
       ]
     } ) ;
   }
-
-  var T4 = __stage4Types ;
 
   // lily gate: two columns come down the edges firing quick pairs
   for( var post = 0; post < 16; post++ ) {
@@ -458,7 +476,7 @@ var __stage4EnemiesParams = [ ] ;
     'powerItem': 2,
     'scoreItem': 4,
     's': [
-      { 'bullet': B.bellToss, 'type': T.yellowOrb, 'shotCount': [ 50, 95, 140, 185, 230 ] },
+      { 'bullet': B.bellToss, 'type': T4.purpleFlower, 'shotCount': [ 50, 95, 140, 185, 230 ] },
       { 'bullet': B.bellRing, 'type': T.purpleOrb, 'shotCount': [ 70, 160, 250 ] }
     ],
     'v': [
@@ -493,9 +511,9 @@ var __stage4EnemiesParams = [ ] ;
       'scoreItem': 3,
       's': [
         { 'bullet': wheel == 0 ? B.pinwheelA : B.pinwheelBackA, 'type': T.purpleRice, 'shotCount': [ 50 ] },
-        { 'bullet': wheel == 0 ? B.pinwheelB : B.pinwheelBackB, 'type': T.greenRice,  'shotCount': [ 50 ] },
+        { 'bullet': wheel == 0 ? B.pinwheelB : B.pinwheelBackB, 'type': T4.greenButterfly, 'shotCount': [ 50 ] },
         { 'bullet': wheel == 0 ? B.pinwheelBackA : B.pinwheelA, 'type': T.purpleRice, 'shotCount': [ 170 ] },
-        { 'bullet': wheel == 0 ? B.pinwheelBackB : B.pinwheelB, 'type': T.greenRice,  'shotCount': [ 170 ] }
+        { 'bullet': wheel == 0 ? B.pinwheelBackB : B.pinwheelB, 'type': T4.greenButterfly, 'shotCount': [ 170 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'ra': -0.045, 'rrange': { 'min': 0 } } },
@@ -551,7 +569,7 @@ var __stage4EnemiesParams = [ ] ;
       'vital': 4,
       'powerItem': dancer % 3 == 0 ? 1 : 0,
       'scoreItem': 1,
-      's': { 'bullet': B.aimOne, 'type': T.greenOrb, 'shotCount': [ 40, 90, 140, 190 ] },
+      's': { 'bullet': B.aimOne, 'type': T4.cyanNote, 'shotCount': [ 40, 90, 140, 190 ] },
       'v': [
         { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'w': leftDancer ? -1.3 : 1.3 } },
         { 'count': 240, 'v': { 'r': 2.6, 'w': 0 } }
@@ -574,7 +592,7 @@ var __stage4EnemiesParams = [ ] ;
       'vital': 3,
       'powerItem': marcher % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
-      's': { 'bullet': B.thread, 'type': T4.greenKunai, 'shotCount': [ 60 ] },
+      's': { 'bullet': B.thread, 'type': T4.greenDancer, 'shotCount': [ 60 ] },
       'v': marchSteps
     } ) ;
   }
@@ -590,6 +608,7 @@ var __stage4BossParams = [ ] ;
 ( function( ) {
   var B = __stage4Bullets ;
   var T = __stage3Types ;
+  var T4 = __stage4Types ;
 
   __stage4BossParams.push( {
     'count': 2750,
@@ -613,8 +632,8 @@ var __stage4BossParams = [ ] ;
         'y': 120,
         'vital': 280,
         's': [
-          { 'bullet': B.poisonRing,    'type': T.purpleOrb, 'shotCount': [ 0 ],       'baseCount': 120 },
-          { 'bullet': B.poisonRingOff, 'type': T.purpleOrb, 'shotCount': [ 60 ],      'baseCount': 120 },
+          { 'bullet': B.poisonRing,    'type': T4.purpleFlower, 'shotCount': [ 0 ],       'baseCount': 120 },
+          { 'bullet': B.poisonRingOff, 'type': T4.pinkFlower, 'shotCount': [ 60 ],      'baseCount': 120 },
           { 'bullet': B.aimFive,       'type': T.greenRice, 'shotCount': [ 30, 90 ],  'baseCount': 120 }
         ],
         'v': [
@@ -630,7 +649,7 @@ var __stage4BossParams = [ ] ;
         'y': 100,
         'vital': 320,
         's': [
-          { 'bullet': B.bellMist, 'type': T.purpleRice, 'shotCount': [ 0, 70 ],      'baseCount': 140 },
+          { 'bullet': B.bellMist, 'type': T4.pinkHeart, 'shotCount': [ 0, 70 ],      'baseCount': 140 },
           { 'bullet': B.aimOne,   'type': T.redOrb,     'shotCount': [ 35, 105 ],    'baseCount': 140 }
         ],
         'v': [
@@ -664,7 +683,7 @@ var __stage4BossParams = [ ] ;
         'y': 110,
         'vital': 340,
         's': [
-          { 'bullet': B.dollVolley,     'type': T.blueRice, 'shotCount': [ 20, 60 ], 'baseCount': 160 },
+          { 'bullet': B.dollVolley,     'type': T4.blueDoll, 'shotCount': [ 20, 60 ], 'baseCount': 160 },
           { 'bullet': B.dollSpiral,     'type': T.redRice,  'shotCount': [ 80 ],     'baseCount': 160 }
         ],
         'v': [
@@ -714,8 +733,8 @@ var __stage4BossParams = [ ] ;
         'y': 70,
         'vital': 380,
         's': [
-          { 'bullet': B.picketA,   'type': T.blueOrb,   'shotCount': [ 0 ],      'baseCount': 140 },
-          { 'bullet': B.picketB,   'type': T.redOrb,    'shotCount': [ 70 ],     'baseCount': 140 },
+          { 'bullet': B.picketA,   'type': T4.blueDoll,   'shotCount': [ 0 ],      'baseCount': 140 },
+          { 'bullet': B.picketB,   'type': T4.redDoll,    'shotCount': [ 70 ],     'baseCount': 140 },
           { 'bullet': B.kunaiFive, 'type': T.blueKunai, 'shotCount': [ 40, 110 ], 'baseCount': 140 }
         ],
         'v': [
@@ -731,7 +750,7 @@ var __stage4BossParams = [ ] ;
         'y': 110,
         'vital': 400,
         's': [
-          { 'bullet': B.gearLeft,  'type': T.yellowOrb,  'shotCount': [ 0, 40 ],  'baseCount': 160 },
+          { 'bullet': B.gearLeft,  'type': T4.yellowGear,  'shotCount': [ 0, 40 ],  'baseCount': 160 },
           { 'bullet': B.gearRight, 'type': T.purpleRice, 'shotCount': [ 80, 120 ], 'baseCount': 160 },
           { 'bullet': B.thread,    'type': T.blueRice,   'shotCount': [ 60, 140 ], 'baseCount': 160 }
         ],
