@@ -346,7 +346,7 @@ var __stage4EnemiesParams = [ ] ;
   // a last flutter of lily fairies before medicine wakes up
   for( var flutter = 0; flutter < 10; flutter++ ) {
     list.push( {
-      'count': 2480 + flutter * 26,
+      'count': 2400 + flutter * 26,
       'x': 50 + ( flutter * 173 ) % 380,
       'look': 'paleyellow',
       'vital': 4,
@@ -364,7 +364,7 @@ var __stage4EnemiesParams = [ ] ;
   for( var weave = 0; weave < 10; weave++ ) {
     var weaveLeft = weave % 2 == 0 ;
     list.push( {
-      'count': 2800 + weave * 34,
+      'count': 2950 + weave * 34,
       'x': weaveLeft ? 40 : 440,
       'y': 30 + ( weave % 3 ) * 20,
       'look': 'blue',
@@ -383,7 +383,7 @@ var __stage4EnemiesParams = [ ] ;
   for( var sneak = 0; sneak < 10; sneak++ ) {
     var leftSide = sneak % 2 == 0 ;
     list.push( {
-      'count': 3520 + sneak * 20,
+      'count': 3670 + sneak * 20,
       'x': leftSide ? 8 : 472,
       'y': 470,
       'look': 'paleblue',
@@ -399,7 +399,7 @@ var __stage4EnemiesParams = [ ] ;
   var charmSpots = [ 80, 400, 160, 320, 240 ] ;
   for( var thrower = 0; thrower < charmSpots.length; thrower++ ) {
     list.push( {
-      'count': 4150 + thrower * 50,
+      'count': 4300 + thrower * 50,
       'x': charmSpots[ thrower ],
       'look': 'yellow',
       'vital': 9,
@@ -419,7 +419,7 @@ var __stage4EnemiesParams = [ ] ;
   // two sunflower fairies hold the middle of the forest with crossed rings
   for( var guard = 0; guard < 2; guard++ ) {
     list.push( {
-      'count': 4900 + guard * 70,
+      'count': 5050 + guard * 70,
       'x': guard == 0 ? 120 : 360,
       'look': 'sunflower',
       'vital': 30,
@@ -439,7 +439,7 @@ var __stage4EnemiesParams = [ ] ;
   // last before alice: fairies dive in and leave threads behind
   for( var dive = 0; dive < 12; dive++ ) {
     list.push( {
-      'count': 5260 + dive * 22,
+      'count': 5410 + dive * 22,
       'x': 50 + ( dive * 157 ) % 380,
       'vital': 3,
       'powerItem': dive % 3 == 0 ? 1 : 0,
@@ -525,7 +525,7 @@ var __stage4EnemiesParams = [ ] ;
   // marionettes: a row drops down on strings, fires lines that speed up, then gets pulled back up
   for( var puppet = 0; puppet < 7; puppet++ ) {
     list.push( {
-      'count': 3200 + Math.abs( puppet - 3 ) * 6,
+      'count': 3350 + Math.abs( puppet - 3 ) * 6,
       'x': 60 + puppet * 60,
       'look': 'paleblue',
       'vital': 7,
@@ -542,7 +542,7 @@ var __stage4EnemiesParams = [ ] ;
   // mirror rings: big fairies fire rings that bounce off the side walls
   for( var mirror = 0; mirror < 2; mirror++ ) {
     list.push( {
-      'count': 3780 + mirror * 100,
+      'count': 3930 + mirror * 100,
       'x': mirror == 0 ? 120 : 360,
       'look': 'bigwhite',
       'vital': 22,
@@ -563,7 +563,7 @@ var __stage4EnemiesParams = [ ] ;
   for( var dancer = 0; dancer < 12; dancer++ ) {
     var leftDancer = dancer % 2 == 0 ;
     list.push( {
-      'count': 4480 + dancer * 26,
+      'count': 4630 + dancer * 26,
       'x': leftDancer ? 100 : 380,
       'look': 'yellow',
       'vital': 4,
@@ -585,7 +585,7 @@ var __stage4EnemiesParams = [ ] ;
       marchSteps.push( { 'count': swing * 40, 'v': { 'r': 2, 'w': ( swing % 2 == 0 ? 1 : -1 ) * ( leftMarch ? 1 : -1 ) } } ) ;
     marchSteps.push( { 'count': 320, 'v': { 'r': 2, 'w': 0 } } ) ;
     list.push( {
-      'count': 5600 + marcher * 32,
+      'count': 5750 + marcher * 32,
       'x': leftMarch ? 0 : 480,
       'y': leftMarch ? 90 : 150,
       'look': marcher % 2 == 0 ? 'blue' : 'paleblue',
@@ -611,7 +611,7 @@ var __stage4BossParams = [ ] ;
   var T4 = __stage4Types ;
 
   __stage4BossParams.push( {
-    'count': 2750,
+    'count': 2900,
     'character': 'medicine',
     'width': 128,
     'height': 128,
@@ -663,7 +663,7 @@ var __stage4BossParams = [ ] ;
   } ) ;
 
   __stage4BossParams.push( {
-    'count': 6570,
+    'count': 6720,
     'character': 'alice',
     'width': 128,
     'height': 128,

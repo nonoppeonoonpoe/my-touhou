@@ -120,12 +120,15 @@ ItemFactory.prototype.create = function(element, type, spread) {
   params.x = element.getX();
   params.y = element.getY();
   params.v.theta = 270;
+  var drift = 0;
   if(spread) {
     params.x += (__randomizer.random() - 0.5) * spread;
-    params.v.theta = 270 + (__randomizer.random() - 0.5) * 60;
+    drift = (__randomizer.random() - 0.5) * 4;
   }
   var item = this.freelist.get();
   item.init(params, this._getImage(type), type);
+  // scattered items fly out sideways on the way up, then fall straight down
+  item.driftX = drift;
   return item;
 };
 
@@ -219,6 +222,7 @@ Item.prototype.init = function(params, image, type) {
   this.collisionHeight = this._COLLISION_HEIGHT;
   this.target = null;
   this.fromBomb = false;
+  this.driftX = 0;
   this._initView();
 };
 
@@ -236,6 +240,12 @@ Item.prototype.runStep = function() {
   if(this.target && this.count % this._HOMING_SPAN == 0)
     this._calculateHomingPoint();
   this.Element_runStep();
+  if(this.driftX && ! this.target) {
+    this.x += this.driftX;
+    this.driftX *= 0.92;
+    if(this.driftX > -0.05 && this.driftX < 0.05)
+      this.driftX = 0;
+  }
   // r goes negative while falling (theta 270 is up)
   if(! this.target && ! this.gameState.oldRules && this.vector && this.vector.r < -this._MAX_FALL) {
     this.vector.r = -this._MAX_FALL;
