@@ -4,6 +4,7 @@
  * loaded after stage 3, it borrows stage 3's bullet looks and adds its own.
  */
 
+var __stage4Types = { } ;
 var __stage4Bullets = { } ;
 
 ( function( ) {
@@ -163,6 +164,65 @@ var __stage4Bullets = { } ;
   addBullet( 'gearLeft', gear( 1.4, 0 ) ) ;
   addBullet( 'gearRight', gear( -1.4, 30 ) ) ;
 
+  function addType( name, indexX, indexY, small ) {
+    __stage4Types[ name ] = __enemyBulletTypes.length ;
+    __enemyBulletTypes.push( {
+      'indexX': indexX,
+      'indexY': indexY,
+      'width': 16,
+      'height': 16,
+      'collisionWidth': small ? 5 : 10,
+      'collisionHeight': small ? 5 : 10,
+      'rotate': small ? true : false
+    } ) ;
+  }
+
+  addType( 'purpleKunai', 4, 5, true ) ;
+  addType( 'greenKunai', 10, 5, true ) ;
+
+  // lily gate: a quick aimed pair
+  addBullet( 'gatePair', aimedFan( 2, 8, 4 ) ) ;
+
+  // bell rain: bells tossed up in a wide fan that fall back down
+  var bellToss = [ ] ;
+  for( var toss = 0; toss < 11; toss++ ) {
+    bellToss.push( { 'v': { 'r': 3.2, 'theta': 215 + toss * 11,
+                            'g': { 'r': 0, 'theta': 90, 'ra': 0.04, 'rrange': { 'max': 2.4 } } } } ) ;
+  }
+  addBullet( 'bellToss', bellToss ) ;
+  addBullet( 'bellRing', ring( 12, 1.4, 15 ) ) ;
+
+  // poison darts: two fast kunai at the player
+  addBullet( 'darts', aimedFan( 2, 6, 4.4 ) ) ;
+
+  // toxic pinwheel: three arms, the second color fills the gaps between them
+  function pinwheel( startTheta, turnStep ) {
+    var wheelList = [ ] ;
+    for( var i = 0; i < 26; i++ ) {
+      for( var arm = 0; arm < 3; arm++ ) {
+        wheelList.push( { 'count': i * 4, 'v': { 'r': 2.1, 'theta': startTheta + arm * 120 + i * turnStep } } ) ;
+      }
+    }
+    return wheelList ;
+  }
+  addBullet( 'pinwheelA', pinwheel( 0, 8 ) ) ;
+  addBullet( 'pinwheelB', pinwheel( 60, 8 ) ) ;
+  addBullet( 'pinwheelBackA', pinwheel( 0, -8 ) ) ;
+  addBullet( 'pinwheelBackB', pinwheel( 60, -8 ) ) ;
+
+  // marionette string: a line straight down that starts slow and speeds up
+  var stringList = [ ] ;
+  for( var knot = 0; knot < 6; knot++ )
+    stringList.push( { 'count': knot * 5, 'v': { 'r': 0.6, 'theta': 90, 'ra': 0.05, 'rrange': { 'max': 4 } } } ) ;
+  addBullet( 'string', stringList ) ;
+
+  // mirror ring: bounces off the side walls once
+  var mirrorList = [ ] ;
+  for( var shard = 0; shard < 16; shard++ )
+    mirrorList.push( { 'v': { 'r': 2, 'theta': 11.25 + shard * 22.5, 'reflectX': true, 'reflectCount': 1 } } ) ;
+  addBullet( 'mirrorRing', mirrorList ) ;
+  addBullet( 'aimTwoSlow', aimedFan( 2, 14, 2.6 ) ) ;
+
 } ) ( ) ;
 
 
@@ -200,7 +260,7 @@ var __stage4EnemiesParams = [ ] ;
   var cloudSpots = [ 100, 380, 180, 300, 240 ] ;
   for( var cloud = 0; cloud < cloudSpots.length; cloud++ ) {
     list.push( {
-      'count': 600 + cloud * 70,
+      'count': 760 + cloud * 70,
       'x': cloudSpots[ cloud ],
       'look': 'blue',
       'vital': 10,
@@ -221,7 +281,7 @@ var __stage4EnemiesParams = [ ] ;
   // two streams cross the hill from the sides
   for( var k = 0; k < 12; k++ ) {
     list.push( {
-      'count': 1050 + k * 20,
+      'count': 1300 + k * 20,
       'x': 0,
       'y': 50 + ( k % 3 ) * 30,
       'vital': 3,
@@ -231,7 +291,7 @@ var __stage4EnemiesParams = [ ] ;
       'v': { 'r': 2.4, 'theta': 12 }
     } ) ;
     list.push( {
-      'count': 1060 + k * 20,
+      'count': 1310 + k * 20,
       'x': 480,
       'y': 65 + ( k % 3 ) * 30,
       'vital': 3,
@@ -246,7 +306,7 @@ var __stage4EnemiesParams = [ ] ;
   var bellSpots = [ 140, 340 ] ;
   for( var bell = 0; bell < bellSpots.length; bell++ ) {
     list.push( {
-      'count': 1500 + bell * 120,
+      'count': 1900 + bell * 120,
       'x': bellSpots[ bell ],
       'look': 'bigwhite',
       'vital': 28,
@@ -266,7 +326,7 @@ var __stage4EnemiesParams = [ ] ;
   // a last flutter of lily fairies before medicine wakes up
   for( var flutter = 0; flutter < 10; flutter++ ) {
     list.push( {
-      'count': 1980 + flutter * 26,
+      'count': 2480 + flutter * 26,
       'x': 50 + ( flutter * 173 ) % 380,
       'look': 'paleyellow',
       'vital': 4,
@@ -303,7 +363,7 @@ var __stage4EnemiesParams = [ ] ;
   for( var sneak = 0; sneak < 10; sneak++ ) {
     var leftSide = sneak % 2 == 0 ;
     list.push( {
-      'count': 3300 + sneak * 20,
+      'count': 3520 + sneak * 20,
       'x': leftSide ? 8 : 472,
       'y': 470,
       'look': 'paleblue',
@@ -319,7 +379,7 @@ var __stage4EnemiesParams = [ ] ;
   var charmSpots = [ 80, 400, 160, 320, 240 ] ;
   for( var thrower = 0; thrower < charmSpots.length; thrower++ ) {
     list.push( {
-      'count': 3700 + thrower * 50,
+      'count': 4150 + thrower * 50,
       'x': charmSpots[ thrower ],
       'look': 'yellow',
       'vital': 9,
@@ -339,7 +399,7 @@ var __stage4EnemiesParams = [ ] ;
   // two sunflower fairies hold the middle of the forest with crossed rings
   for( var guard = 0; guard < 2; guard++ ) {
     list.push( {
-      'count': 4250 + guard * 70,
+      'count': 4900 + guard * 70,
       'x': guard == 0 ? 120 : 360,
       'look': 'sunflower',
       'vital': 30,
@@ -359,7 +419,7 @@ var __stage4EnemiesParams = [ ] ;
   // last before alice: fairies dive in and leave threads behind
   for( var dive = 0; dive < 12; dive++ ) {
     list.push( {
-      'count': 4720 + dive * 22,
+      'count': 5260 + dive * 22,
       'x': 50 + ( dive * 157 ) % 380,
       'vital': 3,
       'powerItem': dive % 3 == 0 ? 1 : 0,
@@ -369,6 +429,153 @@ var __stage4EnemiesParams = [ ] ;
         { 'count': 0,  'v': { 'r': 3, 'theta': 90, 'ra': -0.05, 'rrange': { 'min': 0.5 } } },
         { 'count': 60, 'v': { 'r': 0.5, 'theta': dive % 2 == 0 ? 330 : 210, 'ra': 0.05 } }
       ]
+    } ) ;
+  }
+
+  var T4 = __stage4Types ;
+
+  // lily gate: two columns come down the edges firing quick pairs
+  for( var post = 0; post < 16; post++ ) {
+    var leftPost = post % 2 == 0 ;
+    list.push( {
+      'count': 420 + post * 22,
+      'x': leftPost ? 36 : 444,
+      'look': 'blue',
+      'vital': 3,
+      'powerItem': post % 4 == 0 ? 1 : 0,
+      'scoreItem': 1,
+      's': { 'bullet': B.gatePair, 'type': T.redRice, 'shotCount': [ 40, 90 ] },
+      'v': { 'r': 2, 'theta': 90 }
+    } ) ;
+  }
+
+  // bell rain: a big flower fairy tosses bells that fall back in a wide shower
+  list.push( {
+    'count': 1080,
+    'x': 240,
+    'look': 'sunflower',
+    'vital': 36,
+    'powerItem': 2,
+    'scoreItem': 4,
+    's': [
+      { 'bullet': B.bellToss, 'type': T.yellowOrb, 'shotCount': [ 50, 95, 140, 185, 230 ] },
+      { 'bullet': B.bellRing, 'type': T.purpleOrb, 'shotCount': [ 70, 160, 250 ] }
+    ],
+    'v': [
+      { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'ra': -0.04, 'rrange': { 'min': 0 } } },
+      { 'count': 300, 'v': { 'r': 0, 'theta': 270, 'ra': 0.04 } }
+    ]
+  } ) ;
+
+  // poison darts: a swarm sweeps in an arc from the top corners
+  for( var dart = 0; dart < 14; dart++ ) {
+    var leftDart = dart % 2 == 0 ;
+    list.push( {
+      'count': 1650 + dart * 14,
+      'x': leftDart ? 0 : 480,
+      'y': 20,
+      'vital': 2,
+      'powerItem': dart % 4 == 0 ? 1 : 0,
+      'scoreItem': 1,
+      's': { 'bullet': B.darts, 'type': T4.purpleKunai, 'shotCount': [ 35, 75 ] },
+      'v': { 'r': 3, 'theta': leftDart ? 20 : 160, 'w': leftDart ? 0.9 : -0.9, 'wrange': leftDart ? { 'max': 0.9 } : { 'min': -0.9 } }
+    } ) ;
+  }
+
+  // toxic pinwheels: two fairies spin spirals in two colors, then the other way
+  for( var wheel = 0; wheel < 2; wheel++ ) {
+    list.push( {
+      'count': 2250 + wheel * 40,
+      'x': wheel == 0 ? 150 : 330,
+      'look': 'bigwhite',
+      'vital': 24,
+      'powerItem': 2,
+      'scoreItem': 3,
+      's': [
+        { 'bullet': wheel == 0 ? B.pinwheelA : B.pinwheelBackA, 'type': T.purpleRice, 'shotCount': [ 50 ] },
+        { 'bullet': wheel == 0 ? B.pinwheelB : B.pinwheelBackB, 'type': T.greenRice,  'shotCount': [ 50 ] },
+        { 'bullet': wheel == 0 ? B.pinwheelBackA : B.pinwheelA, 'type': T.purpleRice, 'shotCount': [ 170 ] },
+        { 'bullet': wheel == 0 ? B.pinwheelBackB : B.pinwheelB, 'type': T.greenRice,  'shotCount': [ 170 ] }
+      ],
+      'v': [
+        { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'ra': -0.045, 'rrange': { 'min': 0 } } },
+        { 'count': 300, 'v': { 'r': 0, 'theta': 270, 'ra': 0.04 } }
+      ]
+    } ) ;
+  }
+
+  // marionettes: a row drops down on strings, fires lines that speed up, then gets pulled back up
+  for( var puppet = 0; puppet < 7; puppet++ ) {
+    list.push( {
+      'count': 3200 + Math.abs( puppet - 3 ) * 6,
+      'x': 60 + puppet * 60,
+      'look': 'paleblue',
+      'vital': 7,
+      'powerItem': puppet % 3 == 0 ? 1 : 0,
+      'scoreItem': 2,
+      's': { 'bullet': B.string, 'type': T.blueRice, 'shotCount': [ 50, 100, 150 ] },
+      'v': [
+        { 'count': 0,   'v': { 'r': 3.5, 'theta': 90, 'ra': -0.06, 'rrange': { 'min': 0 } } },
+        { 'count': 190, 'v': { 'r': 0, 'theta': 270, 'ra': 0.06 } }
+      ]
+    } ) ;
+  }
+
+  // mirror rings: big fairies fire rings that bounce off the side walls
+  for( var mirror = 0; mirror < 2; mirror++ ) {
+    list.push( {
+      'count': 3780 + mirror * 100,
+      'x': mirror == 0 ? 120 : 360,
+      'look': 'bigwhite',
+      'vital': 22,
+      'powerItem': 2,
+      'scoreItem': 3,
+      's': [
+        { 'bullet': B.mirrorRing, 'type': T.cyanOrb, 'shotCount': [ 50, 130, 210 ] },
+        { 'bullet': B.aimTwoSlow, 'type': T.blueRice, 'shotCount': [ 90, 170 ] }
+      ],
+      'v': [
+        { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'ra': -0.045, 'rrange': { 'min': 0 } } },
+        { 'count': 260, 'v': { 'r': 0, 'theta': 270, 'ra': 0.04 } }
+      ]
+    } ) ;
+  }
+
+  // moonless clearing: fairies circle around the field and drop aimed shots
+  for( var dancer = 0; dancer < 12; dancer++ ) {
+    var leftDancer = dancer % 2 == 0 ;
+    list.push( {
+      'count': 4480 + dancer * 26,
+      'x': leftDancer ? 100 : 380,
+      'look': 'yellow',
+      'vital': 4,
+      'powerItem': dancer % 3 == 0 ? 1 : 0,
+      'scoreItem': 1,
+      's': { 'bullet': B.aimOne, 'type': T.greenOrb, 'shotCount': [ 40, 90, 140, 190 ] },
+      'v': [
+        { 'count': 0,   'v': { 'r': 2.2, 'theta': 90, 'w': leftDancer ? -1.3 : 1.3 } },
+        { 'count': 240, 'v': { 'r': 2.6, 'w': 0 } }
+      ]
+    } ) ;
+  }
+
+  // doll parade: a long line marches across in a wave until alice arrives
+  for( var marcher = 0; marcher < 26; marcher++ ) {
+    var leftMarch = Math.floor( marcher / 13 ) == 0 ;
+    var marchSteps = [ { 'count': 0, 'v': { 'r': 2, 'theta': leftMarch ? -20 : 200, 'w': leftMarch ? 1 : -1 } } ] ;
+    for( var swing = 1; swing < 8; swing++ )
+      marchSteps.push( { 'count': swing * 40, 'v': { 'r': 2, 'w': ( swing % 2 == 0 ? 1 : -1 ) * ( leftMarch ? 1 : -1 ) } } ) ;
+    marchSteps.push( { 'count': 320, 'v': { 'r': 2, 'w': 0 } } ) ;
+    list.push( {
+      'count': 5600 + marcher * 32,
+      'x': leftMarch ? 0 : 480,
+      'y': leftMarch ? 90 : 150,
+      'look': marcher % 2 == 0 ? 'blue' : 'paleblue',
+      'vital': 3,
+      'powerItem': marcher % 4 == 0 ? 1 : 0,
+      'scoreItem': 1,
+      's': { 'bullet': B.thread, 'type': T4.greenKunai, 'shotCount': [ 60 ] },
+      'v': marchSteps
     } ) ;
   }
 
@@ -385,7 +592,7 @@ var __stage4BossParams = [ ] ;
   var T = __stage3Types ;
 
   __stage4BossParams.push( {
-    'count': 2360,
+    'count': 2750,
     'character': 'medicine',
     'width': 128,
     'height': 128,
@@ -437,7 +644,7 @@ var __stage4BossParams = [ ] ;
   } ) ;
 
   __stage4BossParams.push( {
-    'count': 5400,
+    'count': 6570,
     'character': 'alice',
     'width': 128,
     'height': 128,
