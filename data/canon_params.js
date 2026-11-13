@@ -391,20 +391,20 @@ var __canonStage2Enemies = [ ] ;
 
   // stage 1, a dark road at night
   var s1 = __canonStage1Enemies ;
-  stream( s1, 100, true, null, B.aimOne, T.darkOrb, 50 ) ;
-  stream( s1, 300, false, null, B.aimOne, T.darkOrb, 50 ) ;
+  stream( s1, 100, true, 'fairyred', B.aimOne, T.darkOrb, 50 ) ;
+  stream( s1, 300, false, 'fairyblue', B.aimOne, T.darkOrb, 50 ) ;
   var stopSpots = [ 120, 360, 240, 80, 400 ] ;
   for( var j = 0; j < stopSpots.length; j++ )
     ringStopper( s1, 500 + j * 70, stopSpots[ j ], 'blue', 8, B.ringTwelve, B.ringTwelveOff, T.darkOrb ) ;
-  crossingLines( s1, 950, null, B.aimThree, T.redRice ) ;
-  swarm( s1, 1450, null, B.aimOne, T.redOrb ) ;
+  crossingLines( s1, 950, 'yinyangred', B.aimThree, __inTypes.redBullet ) ;
+  swarm( s1, 1450, 'spiritblue', B.aimOne, __inTypes.redOrb ) ;
   bigFairy( s1, 1650, 120, 'yellow', [
     { 'bullet': B.ringSixteen, 'type': T.darkOrb, 'shotCount': [ 60, 140, 220 ] },
-    { 'bullet': B.aimThree,    'type': T.redRice, 'shotCount': [ 100, 180, 260 ] }
+    { 'bullet': B.aimThree,    'type': __inTypes.redBullet, 'shotCount': [ 100, 180, 260 ] }
   ] ) ;
   bigFairy( s1, 1700, 360, 'yellow', [
     { 'bullet': B.ringSixteen, 'type': T.darkOrb, 'shotCount': [ 80, 160, 240 ] },
-    { 'bullet': B.aimThree,    'type': T.redRice, 'shotCount': [ 120, 200, 280 ] }
+    { 'bullet': B.aimThree,    'type': __inTypes.redBullet, 'shotCount': [ 120, 200, 280 ] }
   ] ) ;
   // after the mid-boss
   for( var m = 0; m < 6; m++ ) {
@@ -422,7 +422,7 @@ var __canonStage2Enemies = [ ] ;
       ]
     } ) ;
   }
-  swarm( s1, 2750, null, B.aimOne, T.darkOrb ) ;
+  swarm( s1, 2750, 'fairygreen', B.aimOne, T.darkOrb ) ;
 
   // stage 2, the misty lake. the fairies here are blue and cold
   var s2 = __canonStage2Enemies ;
@@ -431,7 +431,7 @@ var __canonStage2Enemies = [ ] ;
   var snowSpots = [ 100, 380, 240, 160, 320 ] ;
   for( var p = 0; p < snowSpots.length; p++ )
     ringStopper( s2, 500 + p * 70, snowSpots[ p ], 'paleblue', 8, B.ringSixteen, B.aimThree, T.icicle ) ;
-  crossingLines( s2, 950, 'blue', B.aimThree, T.iceKunai ) ;
+  crossingLines( s2, 950, 'bonnetblue', B.aimThree, __inTypes.cyanKnife ) ;
   for( var q = 0; q < 10; q++ ) {
     s2.push( {
       'count': 1450 + q * 30,
@@ -452,15 +452,15 @@ var __canonStage2Enemies = [ ] ;
     { 'bullet': B.fairySpiralBack, 'type': T.iceRice, 'shotCount': [ 120, 240 ] }
   ] ) ;
   // after daiyousei
-  stream( s2, 2250, true, 'blue', B.aimThree, T.icicle, 45 ) ;
-  stream( s2, 2400, false, 'blue', B.aimThree, T.icicle, 45 ) ;
-  swarm( s2, 2650, 'blue', B.aimOne, T.iceKunai ) ;
+  stream( s2, 2250, true, 'fairyblue', B.aimThree, T.icicle, 45 ) ;
+  stream( s2, 2400, false, 'fairyyellow', B.aimThree, T.icicle, 45 ) ;
+  swarm( s2, 2650, 'ringblue', B.aimOne, __inTypes.cyanKnife ) ;
   bigFairy( s2, 2800, 100, 'yellow', [
-    { 'bullet': B.ringSixteen, 'type': T.blueOrb, 'shotCount': [ 60, 140, 220 ] },
+    { 'bullet': B.ringSixteen, 'type': __inTypes.blueOrb, 'shotCount': [ 60, 140, 220 ] },
     { 'bullet': B.snowSpray,   'type': T.snow,    'shotCount': [ 100, 110, 180, 190 ] }
   ] ) ;
   bigFairy( s2, 2850, 380, 'yellow', [
-    { 'bullet': B.ringSixteen, 'type': T.blueOrb, 'shotCount': [ 80, 160, 240 ] },
+    { 'bullet': B.ringSixteen, 'type': __inTypes.blueOrb, 'shotCount': [ 80, 160, 240 ] },
     { 'bullet': B.snowSpray,   'type': T.snow,    'shotCount': [ 120, 130, 200, 210 ] }
   ] ) ;
 } ) ( ) ;
@@ -528,7 +528,7 @@ var __canonStage2Bosses = [ ] ;
       's': [
         { 'bullet': B.darkRing,    'type': T.darkOrb, 'shotCount': [ 0 ],          'baseCount': 160 },
         { 'bullet': B.darkRingOff, 'type': T.darkOrb, 'shotCount': [ 80 ],         'baseCount': 160 },
-        { 'bullet': B.aimFive,     'type': T.redRice, 'shotCount': [ 40, 50, 60 ], 'baseCount': 160 }
+        { 'bullet': B.aimFive,     'type': __inTypes.redBullet, 'shotCount': [ 40, 50, 60 ], 'baseCount': 160 }
       ],
       'v': wander( 140, 340, 100, 160, 80, 50 )
     },

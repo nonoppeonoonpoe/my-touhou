@@ -24,6 +24,7 @@ function StageFx( stage ) {
   this.circleX = 0 ;
   this.circleY = 0 ;
   this.circleSpell = 0 ;
+  this.circleMid = false ;
   this.focusAlpha = 0 ;
   this.spellBgKey = null ;
   this.spellBgAlpha = 0 ;
@@ -101,7 +102,20 @@ StageFx.prototype._addSparks = function( x, y, sparkNum, speed, life, color, siz
 StageFx.prototype.enemyBurst = function( x, y, big ) {
   this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 4, 'to': big ? 90 : 36,
                'life': big ? 40 : 20, 'color': 'rgb(255, 255, 255)', 'width': big ? 4 : 2 } ) ;
+  this._add( { 'kind': 'puff', 'x': x, 'y': y, 'color': Math.floor( Math.random( ) * 4 ), 'size': big ? 96 : 56, 'life': 24 } ) ;
   this._addSparks( x, y, big ? 24 : 8, big ? 5 : 3, big ? 40 : 22, 'rgb(255, 255, 230)', 2 ) ;
+} ;
+
+
+// a small glow where an enemy fires
+StageFx.prototype.shotPuff = function( x, y ) {
+  this._add( { 'kind': 'puff', 'x': x, 'y': y, 'color': 2, 'size': 34, 'life': 12 } ) ;
+} ;
+
+
+// a bullet cleared by a bomb or the end of a spell card pops into a little glow
+StageFx.prototype.clearPuff = function( x, y ) {
+  this._add( { 'kind': 'puff', 'x': x, 'y': y, 'color': Math.floor( Math.random( ) * 4 ), 'size': 28, 'life': 16 } ) ;
 } ;
 
 
@@ -207,7 +221,13 @@ StageFx.prototype._drawPart = function( surface, part ) {
   if( part.delay && part.age < part.delay )
     return ;
   var done = part.delay ? ( part.age - part.delay ) / ( part.life - part.delay ) : part.age / part.life ;
-  if( part.kind == 'spark' ) {
+  if( part.kind == 'puff' ) {
+    var puffImage = this.stage.getImage( Game._IMG_PUFF ) ;
+    var puffFrame = Math.min( 7, Math.floor( done * 8 ) ) ;
+    surface.globalAlpha = 0.9 * ( 1 - done * done ) ;
+    surface.drawImage( puffImage, puffFrame * 32, part.color * 32, 32, 32,
+                       part.x - part.size / 2, part.y - part.size / 2, part.size, part.size ) ;
+  } else if( part.kind == 'spark' ) {
     surface.globalAlpha = 1 - done ;
     surface.fillStyle = part.color ;
     surface.fillRect( part.x - part.size / 2, part.y - part.size / 2, part.size, part.size ) ;
@@ -300,6 +320,7 @@ StageFx.prototype._updateBoss = function( ) {
     var circleBoss = bossManager.getBoss( ) ;
     this.circleX = circleBoss.getX( ) ;
     this.circleY = circleBoss.getY( ) ;
+    this.circleMid = circleBoss.dead == 'escape' ;
   }
   this.circleAlpha += ( circleTarget - this.circleAlpha ) * 0.06 ;
   if( circleTarget == 0 && this.circleAlpha < 0.02 )
@@ -332,45 +353,40 @@ StageFx.prototype._updateSpellBg = function( boss ) {
 } ;
 
 
+// the magic circle under the boss: a hexagram normally, blue for a mid-boss,
+// and the big circle over a ring of fire during a spell card
 StageFx.prototype._drawBossCircle = function( surface ) {
   if( this.circleAlpha <= 0 )
     return ;
-  var circleRadius = ( 46 + 6 * Math.sin( this.circleSpin * 1.7 ) ) * ( 0.6 + 0.4 * this.circleAlpha ) ;
+  var circleImage = this.stage.getImage( Game._IMG_CIRCLE ) ;
+  var circleSize = ( 120 + 10 * Math.sin( this.circleSpin * 1.7 ) ) * ( 0.6 + 0.4 * this.circleAlpha ) ;
   surface.save( ) ;
   surface.translate( this.circleX, this.circleY ) ;
-  surface.globalAlpha = this.circleAlpha * ( 0.5 + 0.2 * this.circleSpell ) ;
-  surface.strokeStyle = this.circleSpell > 0.5 ? 'rgb(255, 120, 150)' : 'rgb(200, 225, 255)' ;
 
-  surface.lineWidth = 1.5 ;
-  surface.beginPath( ) ;
-  surface.arc( 0, 0, circleRadius, 0, Math.PI * 2 ) ;
-  surface.stroke( ) ;
-  surface.lineWidth = 1 ;
-  surface.beginPath( ) ;
-  surface.arc( 0, 0, circleRadius * 0.82, 0, Math.PI * 2 ) ;
-  surface.stroke( ) ;
-
-  // a star inside, turning one way
-  surface.rotate( this.circleSpin ) ;
-  surface.beginPath( ) ;
-  for( var i = 0; i <= 5; i++ ) {
-    var starAngle = i * Math.PI * 4 / 5 ;
-    var starX = Math.cos( starAngle ) * circleRadius * 0.82 ;
-    var starY = Math.sin( starAngle ) * circleRadius * 0.82 ;
-    if( i == 0 )
-      surface.moveTo( starX, starY ) ;
+  var plainAlpha = this.circleAlpha * ( 1 - this.circleSpell ) * 0.7 ;
+  if( plainAlpha > 0.01 ) {
+    surface.save( ) ;
+    surface.globalAlpha = plainAlpha ;
+    surface.rotate( this.circleSpin ) ;
+    if( this.circleMid )
+      surface.drawImage( circleImage, 256, 128, 128, 128, -circleSize / 2, -circleSize / 2, circleSize, circleSize ) ;
     else
-      surface.lineTo( starX, starY ) ;
+      surface.drawImage( circleImage, 256, 0, 128, 128, -circleSize / 2, -circleSize / 2, circleSize, circleSize ) ;
+    surface.restore( ) ;
   }
-  surface.stroke( ) ;
 
-  // little marks on the outer ring, turning the other way
-  surface.rotate( -this.circleSpin * 2 ) ;
-  surface.fillStyle = surface.strokeStyle ;
-  for( var j = 0; j < 12; j++ ) {
-    var markAngle = j * Math.PI / 6 ;
-    surface.fillRect( Math.cos( markAngle ) * circleRadius * 0.91 - 1.5,
-                      Math.sin( markAngle ) * circleRadius * 0.91 - 1.5, 3, 3 ) ;
+  var spellAlpha = this.circleAlpha * this.circleSpell ;
+  if( spellAlpha > 0.01 ) {
+    var fireSize = circleSize * 0.9 ;
+    surface.save( ) ;
+    surface.globalAlpha = spellAlpha * 0.45 ;
+    surface.rotate( -this.circleSpin * 1.5 ) ;
+    surface.drawImage( circleImage, 384, 0, 128, 128, -fireSize / 2, -fireSize / 2, fireSize, fireSize ) ;
+    surface.restore( ) ;
+    var bigSize = circleSize * 1.5 ;
+    surface.globalAlpha = spellAlpha * 0.6 ;
+    surface.rotate( this.circleSpin ) ;
+    surface.drawImage( circleImage, 0, 0, 256, 256, -bigSize / 2, -bigSize / 2, bigSize, bigSize ) ;
   }
   surface.restore( ) ;
 } ;

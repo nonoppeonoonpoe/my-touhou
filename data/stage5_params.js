@@ -1,48 +1,13 @@
 /*
  * stage 5: through the lost bamboo forest and into eientei.
  * mid-boss tewi, boss reisen.
- * loaded after stage 4, it borrows the older bullet looks and adds its own.
+ * loaded after stage 4, it uses the bullet looks from in_types.js.
  */
 
-var __stage5Types = { } ;
+var __stage5Types = __inTypes ;
 var __stage5Bullets = { } ;
 
 ( function( ) {
-  // the 32 pixel rows on the bottom half of the bullet sheet: gun bullets, big orbs, eggs, knives
-  var colorSlots = { 'white': 0, 'red': 1, 'yellow': 2, 'green': 3, 'cyan': 4, 'blue': 5, 'purple': 6, 'pink': 7 } ;
-  var bigLooks = [
-    { 'shape': 'Bullet', 'firstX': 0, 'rowY': 8, 'hit': 6,  'rotate': true },
-    { 'shape': 'Orb',    'firstX': 8, 'rowY': 8, 'hit': 14, 'rotate': false },
-    { 'shape': 'Egg',    'firstX': 0, 'rowY': 9, 'hit': 8,  'rotate': true },
-    { 'shape': 'Knife',  'firstX': 8, 'rowY': 9, 'hit': 6,  'rotate': true }
-  ] ;
-  for( var lookNum = 0; lookNum < bigLooks.length; lookNum++ ) {
-    var bigLook = bigLooks[ lookNum ] ;
-    for( var colorName in colorSlots ) {
-      __stage5Types[ colorName + bigLook.shape ] = __enemyBulletTypes.length ;
-      __enemyBulletTypes.push( {
-        'indexX': bigLook.firstX + colorSlots[ colorName ],
-        'indexY': bigLook.rowY,
-        'width': 32,
-        'height': 32,
-        'collisionWidth': bigLook.hit,
-        'collisionHeight': bigLook.hit,
-        'rotate': bigLook.rotate
-      } ) ;
-    }
-  }
-
-  __stage5Types.carrot = __enemyBulletTypes.length ;
-  __enemyBulletTypes.push( {
-    'indexX': 0,
-    'indexY': 10,
-    'width': 32,
-    'height': 32,
-    'collisionWidth': 6,
-    'collisionHeight': 6,
-    'rotate': true
-  } ) ;
-
   function addBullet( name, bulletList ) {
     __stage5Bullets[ name ] = __enemyBulletsParams.length ;
     __enemyBulletsParams.push( bulletList ) ;
@@ -196,6 +161,12 @@ var __stage5Bullets = { } ;
   }
   addBullet( 'gazeRing', gaze( 4.5 ) ) ;
   addBullet( 'gazeRingOff', gaze( 13.5 ) ) ;
+
+  // four red lasers in a cross that slowly turns, a warning line first
+  var gazeLaserList = [ ] ;
+  for( var arm = 0; arm < 4; arm++ )
+    gazeLaserList.push( { 'laser': true, 'laserColor': 2, 'waitCount': 50, 'keep': 130, 'v': { 'r': 0, 'theta': 45 + arm * 90, 'w': 0.5 } } ) ;
+  addBullet( 'gazeLasers', gazeLaserList ) ;
 } ) ( ) ;
 
 
@@ -214,7 +185,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 60 + hop * 28,
       'x': hopLeft ? 80 + ( hop % 4 ) * 30 : 400 - ( hop % 4 ) * 30,
-      'look': 'paleblue',
+      'look': 'bunnyblue',
       'vital': 4,
       'powerItem': hop % 3 == 0 ? 1 : 0,
       'scoreItem': hop % 3 != 0 ? 1 : 0,
@@ -235,7 +206,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 480 + lane * 20,
       'x': leftLane ? 30 : 450,
-      'look': 'blue',
+      'look': 'bonnetblue',
       'vital': 3,
       'powerItem': lane % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -287,7 +258,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 1760 + circler * 26,
       'x': leftCircler ? 110 : 370,
-      'look': 'paleyellow',
+      'look': 'spirityellow',
       'vital': 4,
       'powerItem': circler % 3 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -325,7 +296,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 2620 + rush * 18,
       'x': 50 + ( rush * 167 ) % 380,
-      'look': 'paleblue',
+      'look': 'bunnyred',
       'vital': 3,
       'powerItem': rush % 2 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -343,7 +314,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 3050 + door * 34,
       'x': leftDoor ? 60 : 420,
-      'look': 'blue',
+      'look': 'bunnygreen',
       'vital': 6,
       'powerItem': door % 3 == 0 ? 1 : 0,
       'scoreItem': 2,
@@ -403,6 +374,7 @@ var __stage5EnemiesParams = [ ] ;
       'count': 4600 + cross * 20,
       'x': 0,
       'y': 50 + ( cross % 3 ) * 30,
+      'look': 'yinyangpink',
       'vital': 3,
       'powerItem': cross % 3 == 0 ? 1 : 0,
       'scoreItem': cross % 3 != 0 ? 1 : 0,
@@ -413,6 +385,7 @@ var __stage5EnemiesParams = [ ] ;
       'count': 4610 + cross * 20,
       'x': 480,
       'y': 65 + ( cross % 3 ) * 30,
+      'look': 'yinyangpink',
       'vital': 3,
       'powerItem': cross % 3 == 1 ? 1 : 0,
       'scoreItem': cross % 3 != 1 ? 1 : 0,
@@ -426,7 +399,7 @@ var __stage5EnemiesParams = [ ] ;
     list.push( {
       'count': 5160 + mirror * 70,
       'x': [ 100, 380, 170, 310 ][ mirror ],
-      'look': 'paleyellow',
+      'look': 'bunnyred',
       'vital': 12,
       'powerItem': 1,
       'scoreItem': 2,
@@ -473,7 +446,7 @@ var __stage5EnemiesParams = [ ] ;
       'count': 6060 + marcher * 26,
       'x': leftMarch ? 0 : 480,
       'y': leftMarch ? 90 : 150,
-      'look': marcher % 2 == 0 ? 'blue' : 'paleblue',
+      'look': marcher % 2 == 0 ? 'bunnyyellow' : 'bunnyblue',
       'vital': 3,
       'powerItem': marcher % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -638,7 +611,8 @@ var __stage5BossParams = [ ] ;
         's': [
           { 'bullet': B.gazeRing,    'type': T5.redOrb,      'shotCount': [ 0 ],       'baseCount': 160 },
           { 'bullet': B.gazeRingOff, 'type': T5.purpleOrb,   'shotCount': [ 80 ],      'baseCount': 160 },
-          { 'bullet': B.burst,       'type': T5.cyanBullet,  'shotCount': [ 40, 120 ], 'baseCount': 160 }
+          { 'bullet': B.burst,       'type': T5.cyanBullet,  'shotCount': [ 40, 120 ], 'baseCount': 160 },
+          { 'bullet': B.gazeLasers,  'type': T5.redBullet,   'shotCount': [ 10 ],      'baseCount': 320 }
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },

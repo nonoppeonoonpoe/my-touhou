@@ -215,6 +215,22 @@ Enemy.prototype._BIG_LOOKS = {
   'sunflower': 288 / 64
 } ;
 
+// the newer looks on the bottom half: [ cell size, top y, first column ]
+Enemy.prototype._NEW_LOOKS = {
+  'fairyblue':     [ 48, 512, 0 ], 'fairyred':     [ 48, 512, 3 ],
+  'fairygreen':    [ 48, 560, 0 ], 'fairyyellow':  [ 48, 560, 3 ],
+  'bonnetblue':    [ 48, 608, 0 ], 'bonnetred':    [ 48, 608, 3 ],
+  'bonnetgreen':   [ 48, 656, 0 ], 'bonnetyellow': [ 48, 656, 3 ],
+  'bunnyblue':     [ 48, 704, 0 ], 'bunnyred':     [ 48, 704, 3 ],
+  'bunnygreen':    [ 48, 752, 0 ], 'bunnyyellow':  [ 48, 752, 3 ],
+  'yinyangred':    [ 32, 800, 0 ], 'yinyanggreen': [ 32, 800, 3 ],
+  'yinyangpurple': [ 32, 800, 6 ], 'yinyangpink':  [ 32, 800, 9 ],
+  'spiritblue':    [ 32, 832, 0 ], 'spiritorange': [ 32, 832, 3 ],
+  'spiritgreen':   [ 32, 832, 6 ], 'spirityellow': [ 32, 832, 9 ],
+  'ringred':       [ 32, 864, 0 ], 'ringgreen':    [ 32, 864, 3 ],
+  'ringblue':      [ 32, 864, 6 ], 'ringpurple':   [ 32, 864, 9 ]
+} ;
+
 
 __copyParentMethod(Enemy, Element, 'init');
 Enemy.prototype.init = function(params, image) {
@@ -256,6 +272,20 @@ Enemy.prototype.init = function(params, image) {
 
   // other fairies in the enemy image, they're 48 pixels and start lower down
   this.lookRow = 0;
+  this.lookCol = 0;
+  this.lookFrame = 0;
+  this.indexX = 0;
+  if(params.look && this._NEW_LOOKS[params.look]) {
+    var newLook = this._NEW_LOOKS[params.look];
+    this.width  = newLook[0];
+    this.height = newLook[0];
+    this.collisionWidth  = 28;
+    this.collisionHeight = 28;
+    this.lookRow = newLook[1] / newLook[0];
+    this.lookCol = newLook[2];
+    this.indexX = this.lookCol;
+    this.indexY = this.lookRow;
+  }
   if(params.look && this._LOOKS[params.look]) {
     this.width  = 48;
     this.height = 48;
@@ -314,9 +344,10 @@ Enemy.prototype.runStep = function() {
 
   // for animation
   if(this.count % 5 == 0) {
-    this.indexX++;
-    if(this.indexX > 2)
-      this.indexX = 0;
+    this.lookFrame++;
+    if(this.lookFrame > 2)
+      this.lookFrame = 0;
+    this.indexX = this.lookCol + this.lookFrame;
   }
 };
 

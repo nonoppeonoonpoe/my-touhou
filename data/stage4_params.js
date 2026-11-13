@@ -289,7 +289,7 @@ var __stage4EnemiesParams = [ ] ;
       's': [
         { 'bullet': B.miasma,    'type': T.purpleOrb, 'shotCount': [ 50 ] },
         { 'bullet': B.miasmaOff, 'type': T.purpleOrb, 'shotCount': [ 110 ] },
-        { 'bullet': B.aimThree,  'type': T.redRice,   'shotCount': [ 80, 140 ] }
+        { 'bullet': B.aimThree,  'type': __inTypes.redBullet, 'shotCount': [ 80, 140 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 3, 'theta': 90, 'ra': -0.06, 'rrange': { 'min': 0 } } },
@@ -304,6 +304,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 1300 + k * 20,
       'x': 0,
       'y': 50 + ( k % 3 ) * 30,
+      'look': 'yinyangpurple',
       'vital': 3,
       'powerItem': k % 3 == 0 ? 1 : 0,
       'scoreItem': k % 3 != 0 ? 1 : 0,
@@ -314,6 +315,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 1310 + k * 20,
       'x': 480,
       'y': 65 + ( k % 3 ) * 30,
+      'look': 'yinyangpurple',
       'vital': 3,
       'powerItem': k % 3 == 1 ? 1 : 0,
       'scoreItem': k % 3 != 1 ? 1 : 0,
@@ -441,6 +443,7 @@ var __stage4EnemiesParams = [ ] ;
     list.push( {
       'count': 5410 + dive * 22,
       'x': 50 + ( dive * 157 ) % 380,
+      'look': 'fairygreen',
       'vital': 3,
       'powerItem': dive % 3 == 0 ? 1 : 0,
       'scoreItem': dive % 3 != 0 ? 1 : 0,
@@ -492,6 +495,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 1650 + dart * 14,
       'x': leftDart ? 0 : 480,
       'y': 20,
+      'look': 'spiritgreen',
       'vital': 2,
       'powerItem': dart % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -565,7 +569,7 @@ var __stage4EnemiesParams = [ ] ;
     list.push( {
       'count': 4630 + dancer * 26,
       'x': leftDancer ? 100 : 380,
-      'look': 'yellow',
+      'look': 'bonnetyellow',
       'vital': 4,
       'powerItem': dancer % 3 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -588,7 +592,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 5750 + marcher * 32,
       'x': leftMarch ? 0 : 480,
       'y': leftMarch ? 90 : 150,
-      'look': marcher % 2 == 0 ? 'blue' : 'paleblue',
+      'look': marcher % 2 == 0 ? 'bonnetblue' : 'bonnetred',
       'vital': 3,
       'powerItem': marcher % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
@@ -634,7 +638,7 @@ var __stage4BossParams = [ ] ;
         's': [
           { 'bullet': B.poisonRing,    'type': T4.purpleFlower, 'shotCount': [ 0 ],       'baseCount': 120 },
           { 'bullet': B.poisonRingOff, 'type': T4.pinkFlower, 'shotCount': [ 60 ],      'baseCount': 120 },
-          { 'bullet': B.aimFive,       'type': T.greenRice, 'shotCount': [ 30, 90 ],  'baseCount': 120 }
+          { 'bullet': B.aimFive,       'type': __inTypes.greenEgg, 'shotCount': [ 30, 90 ],  'baseCount': 120 }
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
@@ -735,7 +739,7 @@ var __stage4BossParams = [ ] ;
         's': [
           { 'bullet': B.picketA,   'type': T4.blueDoll,   'shotCount': [ 0 ],      'baseCount': 140 },
           { 'bullet': B.picketB,   'type': T4.redDoll,    'shotCount': [ 70 ],     'baseCount': 140 },
-          { 'bullet': B.kunaiFive, 'type': T.blueKunai, 'shotCount': [ 40, 110 ], 'baseCount': 140 }
+          { 'bullet': B.kunaiFive, 'type': __inTypes.blueKnife, 'shotCount': [ 40, 110 ], 'baseCount': 140 }
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
