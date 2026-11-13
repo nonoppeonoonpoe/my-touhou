@@ -144,6 +144,9 @@ PostReplayState.prototype._displayQuestion = function( surface ) {
 
 
 PostReplayState.prototype.handleKeyDown = function( e ) {
+  // a shot key still held from the run shouldn't pick for you
+  if( e.repeat || this.count < 30 || this.state != PostReplayState._STATE_SELECT )
+    return ;
   switch( e.keyCode ) {
     case 38: // up
     case 40: // down
