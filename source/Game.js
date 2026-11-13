@@ -179,6 +179,7 @@ Game._IMG_SPELL_KOGASA    = 51;
 Game._IMG_SPELL_KEINE     = 52;
 Game._IMG_SPELL_MEDICINE  = 53;
 Game._IMG_SPELL_ALICE     = 54;
+Game._IMG_STAND_DAIYOUSEI = 55;
 
 Game._IMGS = { } ;
 Game._IMGS[Game._IMG_FIGHTER]            = 'image/fighter.png';
@@ -236,6 +237,7 @@ Game._IMGS[ Game._IMG_SPELL_KOGASA ]     = 'image/spell_kogasa.png' ;
 Game._IMGS[ Game._IMG_SPELL_KEINE ]      = 'image/spell_keine.png' ;
 Game._IMGS[ Game._IMG_SPELL_MEDICINE ]   = 'image/spell_medicine.png' ;
 Game._IMGS[ Game._IMG_SPELL_ALICE ]      = 'image/spell_alice.png' ;
+Game._IMGS[ Game._IMG_STAND_DAIYOUSEI ]  = 'image/daiyousei_stand.png' ;
 
 // boss sprite sheet, portrait and spell card background for each character, portraits are drawn at standWidth x 600
 Game._CHARACTERS = {
@@ -243,7 +245,7 @@ Game._CHARACTERS = {
   'marisa':    { 'sheet': null,                      'stand': Game._IMG_STAND_MARISA,   'standWidth': 400, 'spellBg': null },
   'mokou':     { 'sheet': Game._IMG_ENEMY_MOKOU,     'stand': Game._IMG_STAND_MOKOU,    'standWidth': 512, 'spellBg': null },
   'rumia':     { 'sheet': Game._IMG_ENEMY_RUMIA,     'stand': Game._IMG_STAND_RUMIA,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_RUMIA },
-  'daiyousei': { 'sheet': Game._IMG_ENEMY_DAIYOUSEI, 'stand': null,                     'standWidth': 600, 'spellBg': null },
+  'daiyousei': { 'sheet': Game._IMG_ENEMY_DAIYOUSEI, 'stand': Game._IMG_STAND_DAIYOUSEI, 'standWidth': 600, 'spellBg': null },
   'chilno':    { 'sheet': Game._IMG_ENEMY_CHILNO,    'stand': Game._IMG_STAND_CHILNO,   'standWidth': 550, 'spellBg': Game._IMG_SPELL_CHILNO },
   'kogasa':    { 'sheet': Game._IMG_ENEMY_KOGASA,    'stand': Game._IMG_STAND_KOGASA,   'standWidth': 600, 'spellBg': Game._IMG_SPELL_KOGASA },
   'keine':     { 'sheet': Game._IMG_ENEMY_KEINE,     'stand': Game._IMG_STAND_KEINE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_KEINE },
