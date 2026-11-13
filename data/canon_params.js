@@ -396,15 +396,15 @@ var __canonStage2Enemies = [ ] ;
   var stopSpots = [ 120, 360, 240, 80, 400 ] ;
   for( var j = 0; j < stopSpots.length; j++ )
     ringStopper( s1, 500 + j * 70, stopSpots[ j ], 'blue', 8, B.ringTwelve, B.ringTwelveOff, T.darkOrb ) ;
-  crossingLines( s1, 950, 'yinyangred', B.aimThree, __inTypes.redBullet ) ;
+  crossingLines( s1, 950, 'ringred', B.aimThree, T.redRice ) ;
   swarm( s1, 1450, 'spiritblue', B.aimOne, __inTypes.redOrb ) ;
   bigFairy( s1, 1650, 120, 'yellow', [
     { 'bullet': B.ringSixteen, 'type': T.darkOrb, 'shotCount': [ 60, 140, 220 ] },
-    { 'bullet': B.aimThree,    'type': __inTypes.redBullet, 'shotCount': [ 100, 180, 260 ] }
+    { 'bullet': B.aimThree,    'type': T.redRice, 'shotCount': [ 100, 180, 260 ] }
   ] ) ;
   bigFairy( s1, 1700, 360, 'yellow', [
     { 'bullet': B.ringSixteen, 'type': T.darkOrb, 'shotCount': [ 80, 160, 240 ] },
-    { 'bullet': B.aimThree,    'type': __inTypes.redBullet, 'shotCount': [ 120, 200, 280 ] }
+    { 'bullet': B.aimThree,    'type': T.redRice, 'shotCount': [ 120, 200, 280 ] }
   ] ) ;
   // after the mid-boss
   for( var m = 0; m < 6; m++ ) {
@@ -528,7 +528,7 @@ var __canonStage2Bosses = [ ] ;
       's': [
         { 'bullet': B.darkRing,    'type': T.darkOrb, 'shotCount': [ 0 ],          'baseCount': 160 },
         { 'bullet': B.darkRingOff, 'type': T.darkOrb, 'shotCount': [ 80 ],         'baseCount': 160 },
-        { 'bullet': B.aimFive,     'type': __inTypes.redBullet, 'shotCount': [ 40, 50, 60 ], 'baseCount': 160 }
+        { 'bullet': B.aimFive,     'type': T.redRice, 'shotCount': [ 40, 50, 60 ], 'baseCount': 160 }
       ],
       'v': wander( 140, 340, 100, 160, 80, 50 )
     },

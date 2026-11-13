@@ -482,6 +482,7 @@ StageState.prototype.runStep = function( ) {
     this.effectManager.runStep( ) ;
     this.bossManager.runStep( ) ;
     this.enemyBulletManager.runStep( ) ;
+    this._updateLunaticEyes( ) ;
     this.itemManager.runStep( ) ;
     this.fighterManager.runStep( ) ;
     this.fighterOptionManager.runStep( ) ;
@@ -600,6 +601,49 @@ StageState.prototype._updateBGScale = function( ) {
       if( value.d )
         this.bgScale += value.d ;
     }
+  }
+} ;
+
+
+/*
+ * a boss phase with 'eyes' makes her eyes pulse every so often.
+ * each pulse nudges every bullet sideways over a few frames and slows it down,
+ * going the other way on the next pulse. lasers are left alone.
+ */
+StageState.prototype._EYE_SHIFT_FRAMES = 12 ;
+
+StageState.prototype._updateLunaticEyes = function( ) {
+  if( ! this.bossManager.existBoss( ) )
+    return ;
+  var eyeBoss = this.bossManager.getBoss( ) ;
+  if( eyeBoss.isVanishingOrEscaping( ) || ! eyeBoss.params )
+    return ;
+  var eyePhase = eyeBoss.params[ eyeBoss.index ] ;
+  if( ! eyePhase || ! eyePhase.eyes )
+    return ;
+  var eyes = eyePhase.eyes ;
+  var sincePulse = eyeBoss.count - eyeBoss._APPEAR_COUNT - eyeBoss._APPEAR_WAIT_COUNT - eyes.first ;
+  if( sincePulse < 0 )
+    return ;
+  var pulseNum = Math.floor( sincePulse / eyes.every ) ;
+  var pulseAge = sincePulse % eyes.every ;
+  if( pulseAge >= this._EYE_SHIFT_FRAMES )
+    return ;
+  var eyeDir = ( pulseNum % 2 == 0 ) ? 1 : -1 ;
+  var shiftStep = eyeDir * eyes.shift / this._EYE_SHIFT_FRAMES ;
+  var eyeBullets = this.enemyBulletManager.elements ;
+  for( var i = 0; i < eyeBullets.length; i++ ) {
+    var eyeBullet = eyeBullets[ i ] ;
+    if( eyeBullet._ID !== this.enemyBulletManager._ID_BULLET )
+      continue ;
+    eyeBullet.x += shiftStep ;
+    if( pulseAge == 0 && eyeBullet.vector )
+      eyeBullet.vector.r *= eyes.slow ;
+  }
+  if( pulseAge == 0 ) {
+    this.fx.eyePulse( eyeBoss.getX( ), eyeBoss.getY( ) ) ;
+    this.fx.shake( 3, 10 ) ;
+    this._queueSound( Game._SE_EYE ) ;
   }
 } ;
 

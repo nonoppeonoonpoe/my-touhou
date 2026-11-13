@@ -205,26 +205,43 @@ var __talkScenes = { } ;
   __talkScenes.reisenBefore = [
     talk( 'reimu', 'reisen', [
       [ 'reisen', 'You got through the bamboo.\nYou\'re the shrine maiden, aren\'t you?' ],
-      [ 'me',     'And you\'re the one hiding the moon.' ],
-      [ 'reisen', 'Look into my eyes for a while.\nYou\'ll forget why you came.' ],
+      [ 'me',     'And you\'re the rabbit who\'s hiding the moon.' ],
+      [ 'reisen', 'Hiding? We sealed it.\nThere\'s a difference.' ],
+      [ 'me',     'Not to anyone who has to stay up all night\nbecause of it.' ],
+      [ 'reisen', 'You don\'t understand. If the full moon shines\ntonight, the people from the moon\ncan find their way here.' ],
+      [ 'me',     'So you swapped out the whole sky\nto hide from someone? That\'s a lot of work\nfor one rabbit.' ],
+      [ 'reisen', 'It wasn\'t my idea...\nbut I won\'t let you ruin it.' ],
+      [ 'reisen', 'Look into my eyes for a moment.\nUp becomes down, near becomes far.\nYou\'ll forget why you came.' ],
       [ 'me',     'I\'ll look at your back while you run, then.' ]
     ] ),
     talk( 'marisa', 'reisen', [
       [ 'reisen', 'A human on a broom made it all the way to Eientei?' ],
+      [ 'me',     'The bamboo kept shuffling around on me,\nso I just took another route instead.' ],
+      [ 'reisen', 'That was me. You shouldn\'t have been able\nto find the door at all.' ],
       [ 'me',     'It smells like the moon in here.\nYou stole it, didn\'t you?' ],
       [ 'reisen', 'We sealed it away to protect ourselves.\nYou wouldn\'t understand.' ],
-      [ 'me',     'Then explain it while I shoot.' ]
+      [ 'me',     'Try me. I read a lot.' ],
+      [ 'reisen', 'Then read this. Look into my eyes, and everything\nin front of you will drift out of place.' ],
+      [ 'me',     'Bullets that move after you dodge them?\nThat\'s just rude.' ],
+      [ 'reisen', 'On the moon we call it good manners.\nTry to keep up.' ]
     ] )
   ] ;
 
-  var reisenGivesUp = 'My eyes don\'t work on you at all...\nFine. My master is waiting further in.' ;
   __talkScenes.reisenAfter = [
     talk( 'reimu', 'reisen', [
-      [ 'reisen', reisenGivesUp ],
-      [ 'me',     'Then I\'ll go say hello to your master.' ]
+      [ 'reisen', 'My eyes... don\'t work on you at all?\nYour wavelength doesn\'t move.' ],
+      [ 'me',     'I don\'t let things move me.\nIt saves a lot of trouble.' ],
+      [ 'reisen', '...Fine. My master is waiting further in.\nShe\'s the one who made the false moon.' ],
+      [ 'me',     'Then I\'ll go say hello to your master.' ],
+      [ 'reisen', 'Be careful. She\'s a lot smarter than me.' ],
+      [ 'me',     'Good. Smart people give up faster.' ]
     ] ),
     talk( 'marisa', 'reisen', [
-      [ 'reisen', reisenGivesUp ],
+      [ 'reisen', 'My eyes don\'t work on you at all... how?' ],
+      [ 'me',     'If the bullets wobble,\nI just go faster than the wobble.' ],
+      [ 'reisen', 'That\'s not how lunacy works.' ],
+      [ 'me',     'It\'s how my broom works.\nSo, where\'s the moon?' ],
+      [ 'reisen', 'Fine. My master is waiting further in.' ],
       [ 'me',     'Your master, huh? I bet she\'s got good books.' ]
     ] )
   ] ;

@@ -289,7 +289,7 @@ var __stage4EnemiesParams = [ ] ;
       's': [
         { 'bullet': B.miasma,    'type': T.purpleOrb, 'shotCount': [ 50 ] },
         { 'bullet': B.miasmaOff, 'type': T.purpleOrb, 'shotCount': [ 110 ] },
-        { 'bullet': B.aimThree,  'type': __inTypes.redBullet, 'shotCount': [ 80, 140 ] }
+        { 'bullet': B.aimThree,  'type': T.redRice,   'shotCount': [ 80, 140 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 3, 'theta': 90, 'ra': -0.06, 'rrange': { 'min': 0 } } },
@@ -304,7 +304,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 1300 + k * 20,
       'x': 0,
       'y': 50 + ( k % 3 ) * 30,
-      'look': 'yinyangpurple',
+      'look': 'ringpurple',
       'vital': 3,
       'powerItem': k % 3 == 0 ? 1 : 0,
       'scoreItem': k % 3 != 0 ? 1 : 0,
@@ -315,7 +315,7 @@ var __stage4EnemiesParams = [ ] ;
       'count': 1310 + k * 20,
       'x': 480,
       'y': 65 + ( k % 3 ) * 30,
-      'look': 'yinyangpurple',
+      'look': 'ringpurple',
       'vital': 3,
       'powerItem': k % 3 == 1 ? 1 : 0,
       'scoreItem': k % 3 != 1 ? 1 : 0,

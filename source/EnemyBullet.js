@@ -283,6 +283,8 @@ EnemyBulletFactory.prototype.create = function( enemy, params, shot ) {
   } else if( params.laser ) {
     bullet = this.laserFreelist.get( ) ;
     bullet.init( params, this._getImage( params ), enemy ) ;
+    if( this.gameState._queueSound )
+      this.gameState._queueSound( Game._SE_ENEMY_LASER ) ;
   } else {
     var key = shot.type ? shot.type : 0 ;
     bullet = this.freelist.get( ) ;
