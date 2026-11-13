@@ -607,12 +607,23 @@ StageState.prototype._updateBGScale = function( ) {
 
 /*
  * a boss phase with 'eyes' makes her eyes pulse every so often.
- * each pulse nudges every bullet sideways over a few frames and slows it down,
- * going the other way on the next pulse. lasers are left alone.
+ * each pulse nudges every bullet sideways over a few frames and slows it down
+ * for a short while, going the other way on the next pulse. lasers are left alone.
  */
-StageState.prototype._EYE_SHIFT_FRAMES = 12 ;
+StageState.prototype._EYE_SHIFT_FRAMES = 60 ;
+StageState.prototype._EYE_SLOW_FRAMES = 60 ;
 
 StageState.prototype._updateLunaticEyes = function( ) {
+  var eyeBullets = this.enemyBulletManager.elements ;
+  for( var k = 0; k < eyeBullets.length; k++ ) {
+    var slowedBullet = eyeBullets[ k ] ;
+    if( slowedBullet.eyeVector && this.count >= slowedBullet.eyeRestoreAt ) {
+      if( slowedBullet.eyeVector === slowedBullet.vector )
+        slowedBullet.vector.r /= slowedBullet.eyeSlow ;
+      slowedBullet.eyeVector = null ;
+    }
+  }
+
   if( ! this.bossManager.existBoss( ) )
     return ;
   var eyeBoss = this.bossManager.getBoss( ) ;
@@ -631,14 +642,17 @@ StageState.prototype._updateLunaticEyes = function( ) {
     return ;
   var eyeDir = ( pulseNum % 2 == 0 ) ? 1 : -1 ;
   var shiftStep = eyeDir * eyes.shift / this._EYE_SHIFT_FRAMES ;
-  var eyeBullets = this.enemyBulletManager.elements ;
   for( var i = 0; i < eyeBullets.length; i++ ) {
     var eyeBullet = eyeBullets[ i ] ;
     if( eyeBullet._ID !== this.enemyBulletManager._ID_BULLET )
       continue ;
     eyeBullet.x += shiftStep ;
-    if( pulseAge == 0 && eyeBullet.vector )
+    if( pulseAge == 0 && eyeBullet.vector && ! eyeBullet.eyeVector ) {
       eyeBullet.vector.r *= eyes.slow ;
+      eyeBullet.eyeSlow = eyes.slow ;
+      eyeBullet.eyeVector = eyeBullet.vector ;
+      eyeBullet.eyeRestoreAt = this.count + this._EYE_SLOW_FRAMES ;
+    }
   }
   if( pulseAge == 0 ) {
     this.fx.eyePulse( eyeBoss.getX( ), eyeBoss.getY( ) ) ;

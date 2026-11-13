@@ -181,13 +181,13 @@ var __stage5Bullets = { } ;
   addBullet( 'gazeLasers', gazeLaserList ) ;
 
   // phase shift wall: a row across the whole screen falls down with a gap that snakes side to side
-  var wallGaps = [ 2, 5, 8, 11, 14, 11, 8, 5 ] ;
+  var wallGaps = [ 3, 4, 5, 6, 7, 6, 5, 4 ] ;
   for( var row = 0; row < wallGaps.length; row++ ) {
     var wallList = [ ] ;
-    for( var slot = 0; slot < 19; slot++ ) {
-      if( slot >= wallGaps[ row ] && slot < wallGaps[ row ] + 3 )
+    for( var slot = 0; slot < 15; slot++ ) {
+      if( slot >= wallGaps[ row ] && slot < wallGaps[ row ] + 5 )
         continue ;
-      wallList.push( { 'x': -234 + slot * 26, 'y': -60, 'v': { 'r': 1.5, 'theta': 90 } } ) ;
+      wallList.push( { 'x': -224 + slot * 32, 'y': -60, 'v': { 'r': 1.5, 'theta': 90 } } ) ;
     }
     addBullet( 'wallRow' + row, wallList ) ;
   }
@@ -195,17 +195,17 @@ var __stage5Bullets = { } ;
   // distorted full moon: three wide rings from across the screen
   function moonRings( sideX, startTheta ) {
     var moonList = [ ] ;
-    for( var i = 0; i < 30; i++ )
-      moonList.push( { 'x': sideX, 'v': { 'r': 1.4, 'theta': startTheta + i * 12 } } ) ;
+    for( var i = 0; i < 24; i++ )
+      moonList.push( { 'x': sideX, 'v': { 'r': 2, 'theta': startTheta + i * 15 } } ) ;
     return moonList ;
   }
   addBullet( 'moonLeft', moonRings( -150, 0 ) ) ;
-  addBullet( 'moonMiddle', moonRings( 0, 5 ) ) ;
+  addBullet( 'moonMiddle', moonRings( 0, 7.5 ) ) ;
   addBullet( 'moonRight', moonRings( 150, 0 ) ) ;
 
   // thousand red eyes: thick rings that turn a little each time
   for( var turn = 0; turn < 5; turn++ )
-    addBullet( 'eyeRing' + turn, ring( 30, 1.8, turn * 2.4 ) ) ;
+    addBullet( 'eyeRing' + turn, ring( 24, 2.1, turn * 3 ) ) ;
 } ) ( ) ;
 
 
@@ -595,7 +595,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Wave Sign "Red Eye Ripple"',
-        'eyes': { 'first': 60, 'every': 140, 'shift': 24, 'slow': 0.7 },
+        'eyes': { 'first': 60, 'every': 140, 'shift': 40, 'slow': 0.7 },
         'x': 240,
         'y': 110,
         'vital': 400,
@@ -628,7 +628,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Mad Sign "Mind Shaker"',
-        'eyes': { 'first': 50, 'every': 150, 'shift': 26, 'slow': 0.6 },
+        'eyes': { 'first': 50, 'every': 150, 'shift': 44, 'slow': 0.6 },
         'x': 240,
         'y': 90,
         'vital': 400,
@@ -646,7 +646,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Lunatic Sign "Gaze of the Full Moon"',
-        'eyes': { 'first': 70, 'every': 160, 'shift': 26, 'slow': 0.65 },
+        'eyes': { 'first': 70, 'every': 160, 'shift': 44, 'slow': 0.65 },
         'x': 240,
         'y': 110,
         'vital': 440,
@@ -682,20 +682,20 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Eye Sign "Phase Shift Wall"',
-        'eyes': { 'first': 90, 'every': 132, 'shift': 26, 'slow': 0.75 },
+        'eyes': { 'first': 100, 'every': 160, 'shift': 48, 'slow': 1 },
         'x': 240,
         'y': 100,
         'vital': 420,
         's': [
-          { 'bullet': B.wallRow0, 'type': T5.redBullet, 'shotCount': [ 0 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow1, 'type': T5.pinkBullet, 'shotCount': [ 22 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow2, 'type': T5.redBullet, 'shotCount': [ 44 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow3, 'type': T5.pinkBullet, 'shotCount': [ 66 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow4, 'type': T5.redBullet, 'shotCount': [ 88 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow5, 'type': T5.pinkBullet, 'shotCount': [ 110 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow6, 'type': T5.redBullet, 'shotCount': [ 132 ], 'baseCount': 176 },
-          { 'bullet': B.wallRow7, 'type': T5.pinkBullet, 'shotCount': [ 154 ], 'baseCount': 176 },
-          { 'bullet': B.aimOne, 'type': T5.whiteBullet, 'shotCount': [ 40, 128 ], 'baseCount': 176 }
+          { 'bullet': B.wallRow0, 'type': T5.redBullet, 'shotCount': [ 0 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow1, 'type': T5.pinkBullet, 'shotCount': [ 40 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow2, 'type': T5.redBullet, 'shotCount': [ 80 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow3, 'type': T5.pinkBullet, 'shotCount': [ 120 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow4, 'type': T5.redBullet, 'shotCount': [ 160 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow5, 'type': T5.pinkBullet, 'shotCount': [ 200 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow6, 'type': T5.redBullet, 'shotCount': [ 240 ], 'baseCount': 320 },
+          { 'bullet': B.wallRow7, 'type': T5.pinkBullet, 'shotCount': [ 280 ], 'baseCount': 320 },
+          { 'bullet': B.aimOne, 'type': T5.whiteBullet, 'shotCount': [ 60, 220 ], 'baseCount': 320 }
         ],
         'v': [
           { 'count': 0, 'v': { 'r': 0, 'theta': 90 } }
@@ -703,7 +703,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Moon Eye "Distorted Full Moon"',
-        'eyes': { 'first': 80, 'every': 120, 'shift': 28, 'slow': 0.6 },
+        'eyes': { 'first': 80, 'every': 120, 'shift': 48, 'slow': 0.6 },
         'x': 240,
         'y': 120,
         'vital': 420,
@@ -719,7 +719,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Lunatic Eyes "Thousand Red Eyes"',
-        'eyes': { 'first': 60, 'every': 90, 'shift': 30, 'slow': 0.55 },
+        'eyes': { 'first': 60, 'every': 90, 'shift': 48, 'slow': 0.55 },
         'time': 50,
         'x': 240,
         'y': 130,

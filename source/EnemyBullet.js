@@ -380,6 +380,7 @@ __copyParentMethod(EnemyBullet, Element, 'init');
 EnemyBullet.prototype.init = function(params, image, enemy, params2) {
   this.Element_init(params, image);
   this.enemy = enemy;
+  this.eyeVector = null;
 
   this.width           = params2.width;
   this.height          = params2.height;
