@@ -195,17 +195,17 @@ var __stage5Bullets = { } ;
   // distorted full moon: three wide rings from across the screen
   function moonRings( sideX, startTheta ) {
     var moonList = [ ] ;
-    for( var i = 0; i < 30; i++ )
-      moonList.push( { 'x': sideX, 'v': { 'r': 1.4, 'theta': startTheta + i * 12 } } ) ;
+    for( var i = 0; i < 24; i++ )
+      moonList.push( { 'x': sideX, 'v': { 'r': 2, 'theta': startTheta + i * 15 } } ) ;
     return moonList ;
   }
   addBullet( 'moonLeft', moonRings( -150, 0 ) ) ;
-  addBullet( 'moonMiddle', moonRings( 0, 5 ) ) ;
+  addBullet( 'moonMiddle', moonRings( 0, 7.5 ) ) ;
   addBullet( 'moonRight', moonRings( 150, 0 ) ) ;
 
   // thousand red eyes: thick rings that turn a little each time
   for( var turn = 0; turn < 5; turn++ )
-    addBullet( 'eyeRing' + turn, ring( 30, 1.8, turn * 2.4 ) ) ;
+    addBullet( 'eyeRing' + turn, ring( 24, 2.1, turn * 3 ) ) ;
 } ) ( ) ;
 
 
