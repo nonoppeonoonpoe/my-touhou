@@ -180,6 +180,13 @@ Game._IMG_SPELL_KEINE     = 52;
 Game._IMG_SPELL_MEDICINE  = 53;
 Game._IMG_SPELL_ALICE     = 54;
 Game._IMG_STAND_DAIYOUSEI = 55;
+Game._IMG_ENEMY_TEWI      = 56;
+Game._IMG_ENEMY_REISEN    = 57;
+Game._IMG_STAND_TEWI      = 58;
+Game._IMG_STAND_REISEN    = 59;
+Game._IMG_SPELL_TEWI      = 60;
+Game._IMG_SPELL_REISEN    = 61;
+Game._IMG_BG5             = 62;
 
 Game._IMGS = { } ;
 Game._IMGS[Game._IMG_FIGHTER]            = 'image/fighter.png';
@@ -238,6 +245,13 @@ Game._IMGS[ Game._IMG_SPELL_KEINE ]      = 'image/spell_keine.png' ;
 Game._IMGS[ Game._IMG_SPELL_MEDICINE ]   = 'image/spell_medicine.png' ;
 Game._IMGS[ Game._IMG_SPELL_ALICE ]      = 'image/spell_alice.png' ;
 Game._IMGS[ Game._IMG_STAND_DAIYOUSEI ]  = 'image/daiyousei_stand.png' ;
+Game._IMGS[ Game._IMG_ENEMY_TEWI ]       = 'image/tewi.png' ;
+Game._IMGS[ Game._IMG_ENEMY_REISEN ]     = 'image/reisen.png' ;
+Game._IMGS[ Game._IMG_STAND_TEWI ]       = 'image/tewi_stand.png' ;
+Game._IMGS[ Game._IMG_STAND_REISEN ]     = 'image/reisen_stand.png' ;
+Game._IMGS[ Game._IMG_SPELL_TEWI ]       = 'image/spell_tewi.png' ;
+Game._IMGS[ Game._IMG_SPELL_REISEN ]     = 'image/spell_reisen.png' ;
+Game._IMGS[ Game._IMG_BG5 ]              = 'image/bg5.png' ;
 
 // boss sprite sheet, portrait and spell card background for each character, portraits are drawn at standWidth x 600
 Game._CHARACTERS = {
@@ -250,11 +264,13 @@ Game._CHARACTERS = {
   'kogasa':    { 'sheet': Game._IMG_ENEMY_KOGASA,    'stand': Game._IMG_STAND_KOGASA,   'standWidth': 600, 'spellBg': Game._IMG_SPELL_KOGASA },
   'keine':     { 'sheet': Game._IMG_ENEMY_KEINE,     'stand': Game._IMG_STAND_KEINE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_KEINE },
   'medicine':  { 'sheet': Game._IMG_ENEMY_MEDICINE,  'stand': Game._IMG_STAND_MEDICINE, 'standWidth': 600, 'spellBg': Game._IMG_SPELL_MEDICINE },
-  'alice':     { 'sheet': Game._IMG_ENEMY_ALICE,     'stand': Game._IMG_STAND_ALICE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_ALICE }
+  'alice':     { 'sheet': Game._IMG_ENEMY_ALICE,     'stand': Game._IMG_STAND_ALICE,    'standWidth': 600, 'spellBg': Game._IMG_SPELL_ALICE },
+  'tewi':      { 'sheet': Game._IMG_ENEMY_TEWI,      'stand': Game._IMG_STAND_TEWI,     'standWidth': 600, 'spellBg': Game._IMG_SPELL_TEWI },
+  'reisen':    { 'sheet': Game._IMG_ENEMY_REISEN,    'stand': Game._IMG_STAND_REISEN,   'standWidth': 600, 'spellBg': Game._IMG_SPELL_REISEN }
 } ;
 
 // one background per stage, in order
-Game._STAGE_BGS = [ Game._IMG_BG1, Game._IMG_BG2, Game._IMG_BG3, Game._IMG_BG4 ] ;
+Game._STAGE_BGS = [ Game._IMG_BG1, Game._IMG_BG2, Game._IMG_BG3, Game._IMG_BG4, Game._IMG_BG5 ] ;
 
 Game._BGM_TITLE  = 0 ;
 Game._BGM_1      = 1 ;
