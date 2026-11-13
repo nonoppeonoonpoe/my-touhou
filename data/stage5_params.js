@@ -181,13 +181,17 @@ var __stage5Bullets = { } ;
   addBullet( 'gazeLasers', gazeLaserList ) ;
 
   // phase shift wall: a row across the whole screen falls down with a gap that snakes side to side
-  var wallGaps = [ 3, 4, 5, 6, 7, 6, 5, 4 ] ;
+  var wallGaps = [ ] ;
+  for( var gapUp = 2; gapUp <= 15; gapUp++ )
+    wallGaps.push( gapUp ) ;
+  for( var gapDown = 14; gapDown >= 3; gapDown-- )
+    wallGaps.push( gapDown ) ;
   for( var row = 0; row < wallGaps.length; row++ ) {
     var wallList = [ ] ;
-    for( var slot = 0; slot < 15; slot++ ) {
-      if( slot >= wallGaps[ row ] && slot < wallGaps[ row ] + 5 )
+    for( var slot = 0; slot < 19; slot++ ) {
+      if( slot >= wallGaps[ row ] && slot < wallGaps[ row ] + 2 )
         continue ;
-      wallList.push( { 'x': -224 + slot * 32, 'y': -60, 'v': { 'r': 1.5, 'theta': 90 } } ) ;
+      wallList.push( { 'x': -234 + slot * 26 + ( row % 2 ) * 13, 'y': -60, 'v': { 'r': 1.5, 'theta': 90 } } ) ;
     }
     addBullet( 'wallRow' + row, wallList ) ;
   }
@@ -687,15 +691,33 @@ var __stage5BossParams = [ ] ;
         'y': 100,
         'vital': 420,
         's': [
-          { 'bullet': B.wallRow0, 'type': T5.redBullet, 'shotCount': [ 0 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow1, 'type': T5.pinkBullet, 'shotCount': [ 40 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow2, 'type': T5.redBullet, 'shotCount': [ 80 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow3, 'type': T5.pinkBullet, 'shotCount': [ 120 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow4, 'type': T5.redBullet, 'shotCount': [ 160 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow5, 'type': T5.pinkBullet, 'shotCount': [ 200 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow6, 'type': T5.redBullet, 'shotCount': [ 240 ], 'baseCount': 320 },
-          { 'bullet': B.wallRow7, 'type': T5.pinkBullet, 'shotCount': [ 280 ], 'baseCount': 320 },
-          { 'bullet': B.aimOne, 'type': T5.whiteBullet, 'shotCount': [ 60, 220 ], 'baseCount': 320 }
+          { 'bullet': B.wallRow0, 'type': T5.redBullet, 'shotCount': [ 0 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow1, 'type': T5.pinkBullet, 'shotCount': [ 26 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow2, 'type': T5.redBullet, 'shotCount': [ 52 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow3, 'type': T5.pinkBullet, 'shotCount': [ 78 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow4, 'type': T5.redBullet, 'shotCount': [ 104 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow5, 'type': T5.pinkBullet, 'shotCount': [ 130 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow6, 'type': T5.redBullet, 'shotCount': [ 156 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow7, 'type': T5.pinkBullet, 'shotCount': [ 182 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow8, 'type': T5.redBullet, 'shotCount': [ 208 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow9, 'type': T5.pinkBullet, 'shotCount': [ 234 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow10, 'type': T5.redBullet, 'shotCount': [ 260 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow11, 'type': T5.pinkBullet, 'shotCount': [ 286 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow12, 'type': T5.redBullet, 'shotCount': [ 312 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow13, 'type': T5.pinkBullet, 'shotCount': [ 338 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow14, 'type': T5.redBullet, 'shotCount': [ 364 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow15, 'type': T5.pinkBullet, 'shotCount': [ 390 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow16, 'type': T5.redBullet, 'shotCount': [ 416 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow17, 'type': T5.pinkBullet, 'shotCount': [ 442 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow18, 'type': T5.redBullet, 'shotCount': [ 468 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow19, 'type': T5.pinkBullet, 'shotCount': [ 494 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow20, 'type': T5.redBullet, 'shotCount': [ 520 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow21, 'type': T5.pinkBullet, 'shotCount': [ 546 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow22, 'type': T5.redBullet, 'shotCount': [ 572 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow23, 'type': T5.pinkBullet, 'shotCount': [ 598 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow24, 'type': T5.redBullet, 'shotCount': [ 624 ], 'baseCount': 676 },
+          { 'bullet': B.wallRow25, 'type': T5.pinkBullet, 'shotCount': [ 650 ], 'baseCount': 676 },
+          { 'bullet': B.aimOne, 'type': T5.whiteBullet, 'shotCount': [ 60, 230, 400, 570 ], 'baseCount': 676 }
         ],
         'v': [
           { 'count': 0, 'v': { 'r': 0, 'theta': 90 } }
