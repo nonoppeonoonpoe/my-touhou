@@ -595,7 +595,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Wave Sign "Red Eye Ripple"',
-        'eyes': { 'first': 60, 'every': 140, 'shift': 24, 'slow': 0.7 },
+        'eyes': { 'first': 60, 'every': 140, 'shift': 40, 'slow': 0.7 },
         'x': 240,
         'y': 110,
         'vital': 400,
@@ -628,7 +628,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Mad Sign "Mind Shaker"',
-        'eyes': { 'first': 50, 'every': 150, 'shift': 26, 'slow': 0.6 },
+        'eyes': { 'first': 50, 'every': 150, 'shift': 44, 'slow': 0.6 },
         'x': 240,
         'y': 90,
         'vital': 400,
@@ -646,7 +646,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Lunatic Sign "Gaze of the Full Moon"',
-        'eyes': { 'first': 70, 'every': 160, 'shift': 26, 'slow': 0.65 },
+        'eyes': { 'first': 70, 'every': 160, 'shift': 44, 'slow': 0.65 },
         'x': 240,
         'y': 110,
         'vital': 440,
@@ -682,7 +682,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Eye Sign "Phase Shift Wall"',
-        'eyes': { 'first': 90, 'every': 132, 'shift': 26, 'slow': 0.75 },
+        'eyes': { 'first': 90, 'every': 132, 'shift': 52, 'slow': 0.75 },
         'x': 240,
         'y': 100,
         'vital': 420,
@@ -703,7 +703,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Moon Eye "Distorted Full Moon"',
-        'eyes': { 'first': 80, 'every': 120, 'shift': 28, 'slow': 0.6 },
+        'eyes': { 'first': 80, 'every': 120, 'shift': 48, 'slow': 0.6 },
         'x': 240,
         'y': 120,
         'vital': 420,
@@ -719,7 +719,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Lunatic Eyes "Thousand Red Eyes"',
-        'eyes': { 'first': 60, 'every': 90, 'shift': 30, 'slow': 0.55 },
+        'eyes': { 'first': 60, 'every': 90, 'shift': 48, 'slow': 0.55 },
         'time': 50,
         'x': 240,
         'y': 130,

@@ -610,8 +610,8 @@ StageState.prototype._updateBGScale = function( ) {
  * each pulse nudges every bullet sideways over a few frames and slows it down
  * for a short while, going the other way on the next pulse. lasers are left alone.
  */
-StageState.prototype._EYE_SHIFT_FRAMES = 12 ;
-StageState.prototype._EYE_SLOW_FRAMES = 40 ;
+StageState.prototype._EYE_SHIFT_FRAMES = 60 ;
+StageState.prototype._EYE_SLOW_FRAMES = 60 ;
 
 StageState.prototype._updateLunaticEyes = function( ) {
   var eyeBullets = this.enemyBulletManager.elements ;
