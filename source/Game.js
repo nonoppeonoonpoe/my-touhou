@@ -187,6 +187,8 @@ Game._IMG_STAND_REISEN    = 59;
 Game._IMG_SPELL_TEWI      = 60;
 Game._IMG_SPELL_REISEN    = 61;
 Game._IMG_BG5             = 62;
+Game._IMG_PUFF            = 63;
+Game._IMG_CIRCLE          = 64;
 
 Game._IMGS = { } ;
 Game._IMGS[Game._IMG_FIGHTER]            = 'image/fighter.png';
@@ -252,6 +254,8 @@ Game._IMGS[ Game._IMG_STAND_REISEN ]     = 'image/reisen_stand.png' ;
 Game._IMGS[ Game._IMG_SPELL_TEWI ]       = 'image/spell_tewi.png' ;
 Game._IMGS[ Game._IMG_SPELL_REISEN ]     = 'image/spell_reisen.png' ;
 Game._IMGS[ Game._IMG_BG5 ]              = 'image/bg5.png' ;
+Game._IMGS[ Game._IMG_PUFF ]             = 'image/puff.png' ;
+Game._IMGS[ Game._IMG_CIRCLE ]           = 'image/circle.png' ;
 
 // boss sprite sheet, portrait and spell card background for each character, portraits are drawn at standWidth x 600
 Game._CHARACTERS = {

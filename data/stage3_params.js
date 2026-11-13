@@ -118,6 +118,12 @@ var __stage3Bullets = { } ;
   addBullet( 'headbuttRingOff', ring( 32, 2.0, 5.625 ) ) ;
   addBullet( 'kunaiThree', aimedFan( 3, 16, 4.5 ) ) ;
 
+  // three blue lasers fanned at the player, a warning line first
+  var keineLaserList = [ ] ;
+  for( var beam = 0; beam < 3; beam++ )
+    keineLaserList.push( { 'laser': true, 'laserColor': 6, 'waitCount': 45, 'keep': 70, 'v': { 'aimed': true, 'r': 0, 'theta': -28 + beam * 28 } } ) ;
+  addBullet( 'keineLasers', keineLaserList ) ;
+
   addType( 'lantern',    14, 2, false ) ;
   addType( 'yellowRice', 12, 4, true ) ;
   addType( 'yellowDot',  12, 6, true ) ;
@@ -309,7 +315,7 @@ var __stage3EnemiesParams = [ ] ;
     list.push( {
       'count': 1640 + chime * 6,
       'x': 60 + chime * 72,
-      'look': 'blue',
+      'look': 'spiritorange',
       'vital': 10,
       'powerItem': chime % 2 == 0 ? 1 : 0,
       'scoreItem': 2,
@@ -332,7 +338,7 @@ var __stage3EnemiesParams = [ ] ;
       'vital': 4,
       'powerItem': sneak % 3 == 0 ? 1 : 0,
       'scoreItem': sneak % 3 != 0 ? 1 : 0,
-      's': { 'bullet': B.stones, 'type': T.grayOrb, 'shotCount': [ 30, 65 ] },
+      's': { 'bullet': B.stones, 'type': __inTypes.whiteOrb, 'shotCount': [ 30, 65 ] },
       'v': { 'r': 3.2, 'theta': leftSide ? 295 : 245 }
     } ) ;
   }
@@ -406,8 +412,8 @@ var __stage3EnemiesParams = [ ] ;
       'powerItem': 2,
       'scoreItem': 4,
       's': [
-        { 'bullet': B.ringTwenty,    'type': T.blueOrb, 'shotCount': [ 60, 140, 220 ] },
-        { 'bullet': B.ringTwentyOff, 'type': T.redOrb,  'shotCount': [ 100, 180, 260 ] }
+        { 'bullet': B.ringTwenty,    'type': __inTypes.blueEgg, 'shotCount': [ 60, 140, 220 ] },
+        { 'bullet': B.ringTwentyOff, 'type': __inTypes.redEgg,  'shotCount': [ 100, 180, 260 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 2, 'theta': 90, 'ra': -0.03, 'rrange': { 'min': 0 } } },
@@ -438,7 +444,7 @@ var __stage3EnemiesParams = [ ] ;
     list.push( {
       'count': 4820 + thrower * 45,
       'x': charmSpots[ thrower ],
-      'look': 'yellow',
+      'look': 'bonnetred',
       'vital': 8,
       'powerItem': thrower % 2 == 0 ? 1 : 0,
       'scoreItem': 2,
@@ -487,7 +493,7 @@ var __stage3BossParams = [ ] ;
         's': [
           { 'bullet': B.umbrellaSpin,     'type': T.purpleRice, 'shotCount': [ 0 ],       'baseCount': 160 },
           { 'bullet': B.umbrellaSpinBack, 'type': T.purpleRice, 'shotCount': [ 80 ],      'baseCount': 160 },
-          { 'bullet': B.aimFive,          'type': T.blueOrb,    'shotCount': [ 40, 120 ], 'baseCount': 160 }
+          { 'bullet': B.aimFive,          'type': __inTypes.blueEgg, 'shotCount': [ 40, 120 ], 'baseCount': 160 }
         ],
         'v': [
           { 'count': 0,    'v': { 'r': 0, 'theta': 90 } },
@@ -573,7 +579,8 @@ var __stage3BossParams = [ ] ;
         'vital': 320,
         's': [
           { 'bullet': B.historySpiral,     'type': T.redRice,  'shotCount': [ 0 ],  'baseCount': 200 },
-          { 'bullet': B.historySpiralBack, 'type': T.blueRice, 'shotCount': [ 60 ], 'baseCount': 200 }
+          { 'bullet': B.historySpiralBack, 'type': T.blueRice, 'shotCount': [ 60 ], 'baseCount': 200 },
+          { 'bullet': B.keineLasers,       'type': T.blueRice, 'shotCount': [ 110 ], 'baseCount': 200 }
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
@@ -589,7 +596,7 @@ var __stage3BossParams = [ ] ;
         'vital': 360,
         's': [
           { 'bullet': B.hiddenVillage, 'type': T.cyanOrb,   'shotCount': [ 10, 60 ], 'baseCount': 120 },
-          { 'bullet': B.kunaiThree,    'type': T.blueKunai, 'shotCount': [ 100 ],    'baseCount': 120 }
+          { 'bullet': B.kunaiThree,    'type': __inTypes.blueKnife, 'shotCount': [ 100 ],    'baseCount': 120 }
         ],
         'v': [
           { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },

@@ -544,6 +544,11 @@ EnemyLaser.prototype.init = function(params, image, enemy) {
   this.baseY = this.Math.round(enemy.getY());
   this.indexX = 15;
   this.indexY = 0;
+  // the colored laser row sits at y 352 on the bullet sheet
+  if(params.laserColor !== void 0) {
+    this.indexX = params.laserColor;
+    this.indexY = 352 / 16;
+  }
   this._initView();
 };
 
@@ -568,16 +573,14 @@ EnemyLaser.prototype.display = function( surface ) {
   } else {
     surface.globalAlpha = 0.8 ;
   }
-  var x = Math.round( this.getCenterX( ) ) ;
-  var y = Math.round( this.getCenterY( ) - width / 2 ) ;
-  surface.translate( this.baseX, this.baseY ) ;
-  surface.rotate( this._calculateRadian( this.vector.theta ) ) ;
-  surface.translate( -this.baseX, -this.baseY ) ;
+  // turned so the picture's width goes across the laser, same as the webgl view
+  surface.translate( Math.round( this.getCenterX( ) ), Math.round( this.getCenterY( ) ) ) ;
+  surface.rotate( this._calculateRadian( this.vector.theta - 90 ) ) ;
   surface.drawImage( this.image,
-                     this.getWidth( ) * this.indexX, this.height * this.indexY,
+                     this.getWidth( ) * this.indexX, this.getWidth( ) * this.indexY,
                      this.getWidth( ),               this.getWidth( ),
-                     x,                              y,
-                     this.height,                    width ) ;
+                     -width / 2,                     0,
+                     width,                          this.height ) ;
   surface.restore( ) ;
 //  surface.fillText( x + ':' + y, x, y ) ;
 } ;

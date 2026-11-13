@@ -1341,6 +1341,7 @@ StageState.prototype.notifyFighterDoShot = function( fighter ) {
 
 StageState.prototype.notifyEnemyDoShot = function( enemy, shot ) {
   this.enemyBulletManager.create( enemy, shot ) ;
+  this.fx.shotPuff( enemy.getX( ), enemy.getY( ) ) ;
 } ;
 
 
@@ -1689,6 +1690,7 @@ StageState.prototype.bombDamage = function( target, damage, isBoss ) {
  * TODO: temporal
  */
 StageState.prototype.notifyBeScoreItem = function(fighter, element, fromBomb) {
+  this.fx.clearPuff(element.getX(), element.getY());
   if(this.oldRules) {
     this.itemManager.createHoming(fighter, element);
     return;
