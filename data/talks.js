@@ -179,6 +179,56 @@ var __talkScenes = { } ;
     ] )
   ] ;
 
+  // stage 5, tewi then reisen
+  __talkScenes.tewiBefore = [
+    talk( 'reimu', 'tewi', [
+      [ 'tewi', 'Lost in the bamboo? I can show you the way out...\nfor a small fee.' ],
+      [ 'me',   'I\'m not going out. I\'m going in.' ],
+      [ 'tewi', 'In? Then you\'ll need a lot more luck than that!' ]
+    ] ),
+    talk( 'marisa', 'tewi', [
+      [ 'tewi', 'A witch in the bamboo forest? How lucky.\nFor me, I mean.' ],
+      [ 'me',   'Hey, rabbit. Where\'s the house everyone\nkeeps hiding out here?' ],
+      [ 'tewi', 'House? What house? Catch me first!' ]
+    ] )
+  ] ;
+
+  __talkScenes.tewiEscape = [
+    talk( 'reimu', 'tewi', [
+      [ 'tewi', 'Ow ow ow! Fine, keep going straight.\nI\'m out of here!' ]
+    ] ),
+    talk( 'marisa', 'tewi', [
+      [ 'tewi', 'That broom is cheating!\nI\'m telling Reisen on you!' ]
+    ] )
+  ] ;
+
+  __talkScenes.reisenBefore = [
+    talk( 'reimu', 'reisen', [
+      [ 'reisen', 'You got through the bamboo.\nYou\'re the shrine maiden, aren\'t you?' ],
+      [ 'me',     'And you\'re the one hiding the moon.' ],
+      [ 'reisen', 'Look into my eyes for a while.\nYou\'ll forget why you came.' ],
+      [ 'me',     'I\'ll look at your back while you run, then.' ]
+    ] ),
+    talk( 'marisa', 'reisen', [
+      [ 'reisen', 'A human on a broom made it all the way to Eientei?' ],
+      [ 'me',     'It smells like the moon in here.\nYou stole it, didn\'t you?' ],
+      [ 'reisen', 'We sealed it away to protect ourselves.\nYou wouldn\'t understand.' ],
+      [ 'me',     'Then explain it while I shoot.' ]
+    ] )
+  ] ;
+
+  var reisenGivesUp = 'My eyes don\'t work on you at all...\nFine. My master is waiting further in.' ;
+  __talkScenes.reisenAfter = [
+    talk( 'reimu', 'reisen', [
+      [ 'reisen', reisenGivesUp ],
+      [ 'me',     'Then I\'ll go say hello to your master.' ]
+    ] ),
+    talk( 'marisa', 'reisen', [
+      [ 'reisen', reisenGivesUp ],
+      [ 'me',     'Your master, huh? I bet she\'s got good books.' ]
+    ] )
+  ] ;
+
 } ) ( ) ;
 
 
@@ -194,7 +244,10 @@ var __talkScenes = { } ;
   hookTalks( __stage3BossParams[ 1 ], 'keineBefore', 'keineAfter' ) ;
   hookTalks( __stage4BossParams[ 0 ], 'medicineBefore', 'medicineEscape' ) ;
   hookTalks( __stage4BossParams[ 1 ], 'aliceBefore', 'aliceAfter' ) ;
+  hookTalks( __stage5BossParams[ 0 ], 'tewiBefore', 'tewiEscape' ) ;
+  hookTalks( __stage5BossParams[ 1 ], 'reisenBefore', 'reisenAfter' ) ;
 
-  // the old talk list goes by stage number, so stage 4 needs an entry too
+  // the old talk list goes by stage number, so stages 4 and 5 need an entry too
   __talkParams.push( [ __talkScenes.aliceBefore, __talkScenes.aliceAfter ] ) ;
+  __talkParams.push( [ __talkScenes.reisenBefore, __talkScenes.reisenAfter ] ) ;
 } ) ( ) ;
