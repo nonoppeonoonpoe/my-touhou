@@ -209,7 +209,7 @@ var __stage5Bullets = { } ;
 
   // thousand red eyes: thick rings that turn a little each time
   for( var turn = 0; turn < 5; turn++ )
-    addBullet( 'eyeRing' + turn, ring( 24, 2.1, turn * 3 ) ) ;
+    addBullet( 'eyeRing' + turn, ring( 24, 2.1, turn * 3 + ( turn % 2 ) * 7.5 ) ) ;
 } ) ( ) ;
 
 
