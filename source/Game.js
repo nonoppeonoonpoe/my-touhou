@@ -123,6 +123,8 @@ Game._SE_BONUS        = 21 ;
 Game._SE_LASER        = 22 ;
 Game._SE_SPARK        = 23 ;
 Game._SE_SLASH        = 24 ;
+Game._SE_ENEMY_LASER  = 25 ;
+Game._SE_EYE          = 26 ;
 
 Game._IMG_FIGHTER         =  0;
 Game._IMG_REIMU_SHIP      =  1;
@@ -311,6 +313,8 @@ Game._SES[ Game._SE_BONUS ]         = 'SE/se_bonus.wav' ;
 Game._SES[ Game._SE_LASER ]         = 'SE/se_lazer00.wav' ;
 Game._SES[ Game._SE_SPARK ]         = 'SE/se_nep00.wav' ;
 Game._SES[ Game._SE_SLASH ]         = 'SE/se_slash.wav' ;
+Game._SES[ Game._SE_ENEMY_LASER ]   = 'SE/se_lazer00.wav' ;
+Game._SES[ Game._SE_EYE ]           = 'SE/se_cat00.wav' ;
 
 
 Game._SOMEONE_MESSAGES = [];
@@ -368,6 +372,8 @@ Game._SE_VOLUMES[ Game._SE_BONUS ]         = 0.04 ;
 Game._SE_VOLUMES[ Game._SE_LASER ]         = 0.012 ;
 Game._SE_VOLUMES[ Game._SE_SPARK ]         = 0.05 ;
 Game._SE_VOLUMES[ Game._SE_SLASH ]         = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_ENEMY_LASER ]   = 0.03 ;
+Game._SE_VOLUMES[ Game._SE_EYE ]           = 0.05 ;
 
 
 Game.prototype.soundEffect = function(key) {

@@ -96,22 +96,34 @@ var __stage5Bullets = { } ;
   addBullet( 'carrotFan', aimedFan( 5, 40, 3.4 ) ) ;
   addBullet( 'luckRing', ring( 16, 2, 0 ) ) ;
   addBullet( 'luckRingOff', ring( 16, 2, 11.25 ) ) ;
-  addBullet( 'carrotToss', toss( 11, 210, 12, 3.6 ) ) ;
-  addBullet( 'carrotTossOff', toss( 10, 216, 12, 3.2 ) ) ;
+  // carrots: popped up in a narrow fan, then they fall down onto the field
+  function carrotDrop( carrotNum, firstTheta, stepTheta, speed ) {
+    var dropList = [ ] ;
+    for( var i = 0; i < carrotNum; i++ ) {
+      dropList.push( { 'v': { 'r': speed, 'theta': firstTheta + i * stepTheta,
+                              'g': { 'r': 0, 'theta': 90, 'ra': 0.08, 'rrange': { 'max': 3 } } } } ) ;
+    }
+    return dropList ;
+  }
+  addBullet( 'carrotToss', carrotDrop( 9, 234, 9, 2.6 ) ) ;
+  addBullet( 'carrotTossOff', carrotDrop( 8, 238.5, 9, 2.2 ) ) ;
 
-  // pitfall: a ring spreads out, stops, then drops straight down like the floor gave way
-  function pitfall( startTheta ) {
+  // pitfall: a ring with a gap spreads out, stops, then every orb falls in on the player
+  function pitfall( startTheta, gapAt ) {
     var pitList = [ ] ;
     for( var i = 0; i < 20; i++ ) {
+      var fromGap = ( i - gapAt + 20 ) % 20 ;
+      if( fromGap < 4 )
+        continue ;
       pitList.push( { 'v': [
         { 'count': 0,  'v': { 'r': 2.8, 'theta': startTheta + i * 18, 'ra': -0.06, 'rrange': { 'min': 0 } } },
-        { 'count': 50, 'v': { 'r': 0, 'theta': 90, 'ra': 0.05, 'rrange': { 'max': 2.6 } } }
+        { 'count': 50, 'v': { 'aimed': true, 'r': 0, 'theta': 0, 'ra': 0.05, 'rrange': { 'max': 2.4 } } }
       ] } ) ;
     }
     return pitList ;
   }
-  addBullet( 'pitfall', pitfall( 0 ) ) ;
-  addBullet( 'pitfallOff', pitfall( 9 ) ) ;
+  addBullet( 'pitfall', pitfall( 0, 3 ) ) ;
+  addBullet( 'pitfallOff', pitfall( 9, 13 ) ) ;
 
   // reisen
   // a quick volley, three fans in a row
@@ -167,6 +179,33 @@ var __stage5Bullets = { } ;
   for( var arm = 0; arm < 4; arm++ )
     gazeLaserList.push( { 'laser': true, 'laserColor': 2, 'waitCount': 50, 'keep': 130, 'v': { 'r': 0, 'theta': 45 + arm * 90, 'w': 0.5 } } ) ;
   addBullet( 'gazeLasers', gazeLaserList ) ;
+
+  // phase shift wall: a row across the whole screen falls down with a gap that snakes side to side
+  var wallGaps = [ 2, 5, 8, 11, 14, 11, 8, 5 ] ;
+  for( var row = 0; row < wallGaps.length; row++ ) {
+    var wallList = [ ] ;
+    for( var slot = 0; slot < 19; slot++ ) {
+      if( slot >= wallGaps[ row ] && slot < wallGaps[ row ] + 3 )
+        continue ;
+      wallList.push( { 'x': -234 + slot * 26, 'y': -60, 'v': { 'r': 1.5, 'theta': 90 } } ) ;
+    }
+    addBullet( 'wallRow' + row, wallList ) ;
+  }
+
+  // distorted full moon: three wide rings from across the screen
+  function moonRings( sideX, startTheta ) {
+    var moonList = [ ] ;
+    for( var i = 0; i < 30; i++ )
+      moonList.push( { 'x': sideX, 'v': { 'r': 1.4, 'theta': startTheta + i * 12 } } ) ;
+    return moonList ;
+  }
+  addBullet( 'moonLeft', moonRings( -150, 0 ) ) ;
+  addBullet( 'moonMiddle', moonRings( 0, 5 ) ) ;
+  addBullet( 'moonRight', moonRings( 150, 0 ) ) ;
+
+  // thousand red eyes: thick rings that turn a little each time
+  for( var turn = 0; turn < 5; turn++ )
+    addBullet( 'eyeRing' + turn, ring( 30, 1.8, turn * 2.4 ) ) ;
 } ) ( ) ;
 
 
@@ -191,7 +230,7 @@ var __stage5EnemiesParams = [ ] ;
       'scoreItem': hop % 3 != 0 ? 1 : 0,
       's': [
         { 'bullet': B.burrowRing, 'type': T5.pinkEgg,     'shotCount': [ 40 ] },
-        { 'bullet': B.aimThree,   'type': T5.whiteBullet, 'shotCount': [ 70 ] }
+        { 'bullet': B.aimThree,   'type': T.whiteRice,    'shotCount': [ 70 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 3, 'theta': 90, 'ra': -0.05, 'rrange': { 'min': 0.4 } } },
@@ -210,7 +249,7 @@ var __stage5EnemiesParams = [ ] ;
       'vital': 3,
       'powerItem': lane % 4 == 0 ? 1 : 0,
       'scoreItem': 1,
-      's': { 'bullet': B.darts, 'type': T5.redBullet, 'shotCount': [ 35, 85 ] },
+      's': { 'bullet': B.darts, 'type': T.redRice, 'shotCount': [ 35, 85 ] },
       'v': { 'r': 2.2, 'theta': leftLane ? 80 : 100 }
     } ) ;
   }
@@ -282,7 +321,7 @@ var __stage5EnemiesParams = [ ] ;
       's': [
         { 'bullet': B.burrowRing,    'type': T5.pinkEgg,   'shotCount': [ 50, 110, 170 ] },
         { 'bullet': B.burrowRingOff, 'type': T5.yellowEgg, 'shotCount': [ 80, 140, 200 ] },
-        { 'bullet': B.aimThree,      'type': T5.redBullet, 'shotCount': [ 65, 125, 185 ] }
+        { 'bullet': B.aimThree,      'type': T.redRice,   'shotCount': [ 65, 125, 185 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 2, 'theta': 90, 'ra': -0.03, 'rrange': { 'min': 0 } } },
@@ -300,7 +339,7 @@ var __stage5EnemiesParams = [ ] ;
       'vital': 3,
       'powerItem': rush % 2 == 0 ? 1 : 0,
       'scoreItem': 1,
-      's': { 'bullet': B.aimOne, 'type': T5.pinkBullet, 'shotCount': [ 30 ] },
+      's': { 'bullet': B.aimOne, 'type': T5.pinkEgg, 'shotCount': [ 30 ] },
       'v': [
         { 'count': 0,  'v': { 'r': 3.4, 'theta': 90, 'ra': -0.06, 'rrange': { 'min': 0.6 } } },
         { 'count': 50, 'v': { 'r': 0.6, 'theta': rush % 2 == 0 ? 330 : 210, 'ra': 0.06 } }
@@ -318,7 +357,7 @@ var __stage5EnemiesParams = [ ] ;
       'vital': 6,
       'powerItem': door % 3 == 0 ? 1 : 0,
       'scoreItem': 2,
-      's': { 'bullet': B.burst, 'type': T5.redBullet, 'shotCount': [ 40, 110 ] },
+      's': { 'bullet': B.burst, 'type': T.redRice, 'shotCount': [ 40, 110 ] },
       'v': [
         { 'count': 0,   'v': { 'r': 1.8, 'theta': 90 } },
         { 'count': 150, 'v': { 'r': 2.4, 'theta': leftDoor ? 60 : 120 } }
@@ -337,8 +376,8 @@ var __stage5EnemiesParams = [ ] ;
       'powerItem': 1,
       'scoreItem': 2,
       's': [
-        { 'bullet': B.moonRing,    'type': T5.purpleBullet, 'shotCount': [ 50 ] },
-        { 'bullet': B.moonRingOff, 'type': T5.blueBullet,   'shotCount': [ 100 ] },
+        { 'bullet': B.moonRing,    'type': T.purpleRice,    'shotCount': [ 50 ] },
+        { 'bullet': B.moonRingOff, 'type': T.blueRice,      'shotCount': [ 100 ] },
         { 'bullet': B.aimThree,    'type': T.redRice,       'shotCount': [ 140 ] }
       ],
       'v': [
@@ -374,22 +413,22 @@ var __stage5EnemiesParams = [ ] ;
       'count': 4600 + cross * 20,
       'x': 0,
       'y': 50 + ( cross % 3 ) * 30,
-      'look': 'yinyangpink',
+      'look': 'spiritblue',
       'vital': 3,
       'powerItem': cross % 3 == 0 ? 1 : 0,
       'scoreItem': cross % 3 != 0 ? 1 : 0,
-      's': { 'bullet': B.aimThree, 'type': T5.purpleBullet, 'shotCount': [ 30, 60 ] },
+      's': { 'bullet': B.aimThree, 'type': T.purpleRice, 'shotCount': [ 30, 60 ] },
       'v': { 'r': 2.4, 'theta': 12 }
     } ) ;
     list.push( {
       'count': 4610 + cross * 20,
       'x': 480,
       'y': 65 + ( cross % 3 ) * 30,
-      'look': 'yinyangpink',
+      'look': 'spiritblue',
       'vital': 3,
       'powerItem': cross % 3 == 1 ? 1 : 0,
       'scoreItem': cross % 3 != 1 ? 1 : 0,
-      's': { 'bullet': B.aimThree, 'type': T5.purpleBullet, 'shotCount': [ 30, 60 ] },
+      's': { 'bullet': B.aimThree, 'type': T.purpleRice, 'shotCount': [ 30, 60 ] },
       'v': { 'r': 2.4, 'theta': 168 }
     } ) ;
   }
@@ -405,7 +444,7 @@ var __stage5EnemiesParams = [ ] ;
       'scoreItem': 2,
       's': [
         { 'bullet': B.bounceRing, 'type': T5.purpleKnife, 'shotCount': [ 50, 140 ] },
-        { 'bullet': B.aimOne,     'type': T5.redBullet,   'shotCount': [ 95 ] }
+        { 'bullet': B.aimOne,     'type': T.redRice,      'shotCount': [ 95 ] }
       ],
       'v': [
         { 'count': 0,   'v': { 'r': 2.6, 'theta': 90, 'ra': -0.05, 'rrange': { 'min': 0 } } },
@@ -424,8 +463,8 @@ var __stage5EnemiesParams = [ ] ;
       'powerItem': 2,
       'scoreItem': 4,
       's': [
-        { 'bullet': spinner == 0 ? B.twinSpiral : B.twinSpiralBack, 'type': T5.cyanBullet, 'shotCount': [ 50 ] },
-        { 'bullet': spinner == 0 ? B.twinSpiralBack : B.twinSpiral, 'type': T5.redBullet,  'shotCount': [ 150 ] },
+        { 'bullet': spinner == 0 ? B.twinSpiral : B.twinSpiralBack, 'type': T.blueRice, 'shotCount': [ 50 ] },
+        { 'bullet': spinner == 0 ? B.twinSpiralBack : B.twinSpiral, 'type': T.redRice,  'shotCount': [ 150 ] },
         { 'bullet': B.ringSixteen, 'type': T5.whiteOrb, 'shotCount': [ 120, 220 ] }
       ],
       'v': [
@@ -556,6 +595,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Wave Sign "Red Eye Ripple"',
+        'eyes': { 'first': 60, 'every': 140, 'shift': 24, 'slow': 0.7 },
         'x': 240,
         'y': 110,
         'vital': 400,
@@ -588,6 +628,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Mad Sign "Mind Shaker"',
+        'eyes': { 'first': 50, 'every': 150, 'shift': 26, 'slow': 0.6 },
         'x': 240,
         'y': 90,
         'vital': 400,
@@ -605,6 +646,7 @@ var __stage5BossParams = [ ] ;
       },
       {
         'spellCard': 'Lunatic Sign "Gaze of the Full Moon"',
+        'eyes': { 'first': 70, 'every': 160, 'shift': 26, 'slow': 0.65 },
         'x': 240,
         'y': 110,
         'vital': 440,
@@ -619,6 +661,78 @@ var __stage5BossParams = [ ] ;
           { 'count': 160, 'v': { 'target': { 'x': { 'min': 140, 'max': 340 }, 'y': { 'min': 90, 'max': 130 }, 'count': 40 } } },
           { 'count': 200, 'v': { 'r': 0, 'theta': 90 } },
           { 'count': 320, 'v': 1 }
+        ]
+      },
+      {
+        'spellCard': false,
+        'x': 240,
+        'y': 110,
+        'vital': 360,
+        's': [
+          { 'bullet': B.gunVolley,      'type': T5.redBullet,    'shotCount': [ 30, 100 ], 'baseCount': 140 },
+          { 'bullet': B.moonRing,       'type': T5.cyanBullet,   'shotCount': [ 0 ],       'baseCount': 140 },
+          { 'bullet': B.moonRingOff,    'type': T5.blueBullet,   'shotCount': [ 70 ],      'baseCount': 140 }
+        ],
+        'v': [
+          { 'count': 0,   'v': { 'r': 0, 'theta': 90 } },
+          { 'count': 140, 'v': { 'target': { 'x': { 'min': 160, 'max': 320 }, 'y': { 'min': 90, 'max': 130 }, 'count': 40 } } },
+          { 'count': 180, 'v': { 'r': 0, 'theta': 90 } },
+          { 'count': 280, 'v': 1 }
+        ]
+      },
+      {
+        'spellCard': 'Eye Sign "Phase Shift Wall"',
+        'eyes': { 'first': 90, 'every': 132, 'shift': 26, 'slow': 0.75 },
+        'x': 240,
+        'y': 100,
+        'vital': 420,
+        's': [
+          { 'bullet': B.wallRow0, 'type': T5.redBullet, 'shotCount': [ 0 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow1, 'type': T5.pinkBullet, 'shotCount': [ 22 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow2, 'type': T5.redBullet, 'shotCount': [ 44 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow3, 'type': T5.pinkBullet, 'shotCount': [ 66 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow4, 'type': T5.redBullet, 'shotCount': [ 88 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow5, 'type': T5.pinkBullet, 'shotCount': [ 110 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow6, 'type': T5.redBullet, 'shotCount': [ 132 ], 'baseCount': 176 },
+          { 'bullet': B.wallRow7, 'type': T5.pinkBullet, 'shotCount': [ 154 ], 'baseCount': 176 },
+          { 'bullet': B.aimOne, 'type': T5.whiteBullet, 'shotCount': [ 40, 128 ], 'baseCount': 176 }
+        ],
+        'v': [
+          { 'count': 0, 'v': { 'r': 0, 'theta': 90 } }
+        ]
+      },
+      {
+        'spellCard': 'Moon Eye "Distorted Full Moon"',
+        'eyes': { 'first': 80, 'every': 120, 'shift': 28, 'slow': 0.6 },
+        'x': 240,
+        'y': 120,
+        'vital': 420,
+        's': [
+          { 'bullet': B.moonLeft,   'type': T5.redOrb,    'shotCount': [ 0 ],  'baseCount': 120 },
+          { 'bullet': B.moonRight,  'type': T5.redOrb,    'shotCount': [ 0 ],  'baseCount': 120 },
+          { 'bullet': B.moonMiddle, 'type': T5.blueOrb,   'shotCount': [ 60 ], 'baseCount': 120 },
+          { 'bullet': B.gunVolley,  'type': T5.pinkBullet, 'shotCount': [ 90 ], 'baseCount': 120 }
+        ],
+        'v': [
+          { 'count': 0, 'v': { 'r': 0, 'theta': 90 } }
+        ]
+      },
+      {
+        'spellCard': 'Lunatic Eyes "Thousand Red Eyes"',
+        'eyes': { 'first': 60, 'every': 90, 'shift': 30, 'slow': 0.55 },
+        'time': 50,
+        'x': 240,
+        'y': 130,
+        'vital': 480,
+        's': [
+          { 'bullet': B.eyeRing0, 'type': T5.redOrb, 'shotCount': [ 0 ], 'baseCount': 120 },
+          { 'bullet': B.eyeRing1, 'type': T5.purpleBullet, 'shotCount': [ 24 ], 'baseCount': 120 },
+          { 'bullet': B.eyeRing2, 'type': T5.redOrb, 'shotCount': [ 48 ], 'baseCount': 120 },
+          { 'bullet': B.eyeRing3, 'type': T5.purpleBullet, 'shotCount': [ 72 ], 'baseCount': 120 },
+          { 'bullet': B.eyeRing4, 'type': T5.redOrb, 'shotCount': [ 96 ], 'baseCount': 120 }
+        ],
+        'v': [
+          { 'count': 0, 'v': { 'r': 0, 'theta': 90 } }
         ]
       }
     ]

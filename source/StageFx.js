@@ -119,6 +119,15 @@ StageFx.prototype.clearPuff = function( x, y ) {
 } ;
 
 
+// reisen's eyes flashing open, the bullets around her shift when this plays
+StageFx.prototype.eyePulse = function( x, y ) {
+  this._add( { 'kind': 'eye', 'x': x, 'y': y, 'life': 40 } ) ;
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 20, 'to': 260, 'life': 36, 'color': 'rgb(255, 60, 80)', 'width': 5 } ) ;
+  this._add( { 'kind': 'ring', 'x': x, 'y': y, 'from': 10, 'to': 180, 'life': 30, 'color': 'rgb(255, 160, 170)', 'width': 3, 'delay': 6 } ) ;
+  this.flash( 0.08 ) ;
+} ;
+
+
 StageFx.prototype.hitSpark = function( x, y ) {
   this._addSparks( x, y - 8, 1, 2, 8, 'rgb(255, 255, 255)', 1.5 ) ;
 } ;
@@ -227,6 +236,12 @@ StageFx.prototype._drawPart = function( surface, part ) {
     surface.globalAlpha = 0.9 * ( 1 - done * done ) ;
     surface.drawImage( puffImage, puffFrame * 32, part.color * 32, 32, 32,
                        part.x - part.size / 2, part.y - part.size / 2, part.size, part.size ) ;
+  } else if( part.kind == 'eye' ) {
+    var eyeImage = this.stage.getImage( Game._IMG_PUFF ) ;
+    var eyeGrow = 1.4 + done * 1.2 ;
+    surface.globalAlpha = done < 0.2 ? done * 5 * 0.85 : 0.85 * ( 1 - done ) / 0.8 ;
+    surface.drawImage( eyeImage, 0, 160, 96, 64,
+                       part.x - 48 * eyeGrow, part.y - 32 * eyeGrow, 96 * eyeGrow, 64 * eyeGrow ) ;
   } else if( part.kind == 'spark' ) {
     surface.globalAlpha = 1 - done ;
     surface.fillStyle = part.color ;
